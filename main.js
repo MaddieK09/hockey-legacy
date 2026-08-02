@@ -61,7 +61,7 @@ rinkGraphics.fillRoundedRect(
     this.cameras.main.centerY - 305,
     330,
     610,
-    35
+    55
 );
 
 rinkGraphics.lineStyle(4, 0x1d5fa7, 1);
@@ -70,7 +70,7 @@ rinkGraphics.strokeRoundedRect(
     this.cameras.main.centerY - 305,
     330,
     610,
-    35
+    55
 );
 this.add.rectangle(
     this.cameras.main.centerX,

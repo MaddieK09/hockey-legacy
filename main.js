@@ -63,8 +63,8 @@ this.add.rectangle(
 this.add.rectangle(
     this.cameras.main.centerX,
     this.cameras.main.centerY,
+    330,
     4,
-    610,
     0xff0000
 );
 });

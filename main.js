@@ -93,6 +93,13 @@ this.add.rectangle(
     4,
     0x1d5fa7
 );
+rinkGraphics.lineStyle(4, 0x4fc3ff, 1);
+
+rinkGraphics.strokeCircle(
+    this.cameras.main.centerX,
+    this.cameras.main.centerY,
+    42
+);
 });
 
 

@@ -140,22 +140,18 @@ rinkGraphics.strokeCircle(
 );
 rinkGraphics.lineStyle(3, 0x4fc3ff, 1);
 
-rinkGraphics.strokeArc(
+rinkGraphics.strokeEllipse(
     this.cameras.main.centerX,
     this.cameras.main.centerY - 285,
-    48,
-    Phaser.Math.DegToRad(0),
-    Phaser.Math.DegToRad(180),
-    false
+    96,
+    48
 );
 
-rinkGraphics.strokeArc(
+rinkGraphics.strokeEllipse(
     this.cameras.main.centerX,
     this.cameras.main.centerY + 285,
-    48,
-    Phaser.Math.DegToRad(180),
-    Phaser.Math.DegToRad(360),
-    false
+    96,
+    48
 );
 });
 

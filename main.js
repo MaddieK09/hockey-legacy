@@ -138,6 +138,25 @@ rinkGraphics.strokeCircle(
     this.cameras.main.centerY + 225,
     34
 );
+rinkGraphics.lineStyle(3, 0x4fc3ff, 1);
+
+rinkGraphics.strokeArc(
+    this.cameras.main.centerX,
+    this.cameras.main.centerY - 285,
+    48,
+    Phaser.Math.DegToRad(0),
+    Phaser.Math.DegToRad(180),
+    false
+);
+
+rinkGraphics.strokeArc(
+    this.cameras.main.centerX,
+    this.cameras.main.centerY + 285,
+    48,
+    Phaser.Math.DegToRad(180),
+    Phaser.Math.DegToRad(360),
+    false
+);
 });
 
 

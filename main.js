@@ -100,6 +100,19 @@ rinkGraphics.strokeCircle(
     this.cameras.main.centerY,
     42
 );
+rinkGraphics.fillStyle(0x4fc3ff, 1);
+
+rinkGraphics.fillCircle(
+    this.cameras.main.centerX - 95,
+    this.cameras.main.centerY,
+    4
+);
+
+rinkGraphics.fillCircle(
+    this.cameras.main.centerX + 95,
+    this.cameras.main.centerY,
+    4
+);
 });
 
 

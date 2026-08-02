@@ -53,7 +53,13 @@ playButton.on("pointerdown", () => {
     playButton.setVisible(false);
 titleText.setVisible(false);
 versionText.setVisible(false);
-
+this.add.rectangle(
+    this.cameras.main.centerX,
+    this.cameras.main.centerY,
+    340,
+    620,
+    0xf4fbff
+).setStrokeStyle(4, 0x1d5fa7);
 });
 
 

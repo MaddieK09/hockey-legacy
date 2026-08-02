@@ -53,13 +53,25 @@ playButton.on("pointerdown", () => {
     playButton.setVisible(false);
 titleText.setVisible(false);
 versionText.setVisible(false);
-this.add.rectangle(
-    this.cameras.main.centerX,
-    this.cameras.main.centerY,
+const rinkGraphics = this.add.graphics();
+
+rinkGraphics.fillStyle(0xf4fbff, 1);
+rinkGraphics.fillRoundedRect(
+    this.cameras.main.centerX - 165,
+    this.cameras.main.centerY - 305,
     330,
     610,
-    0xf4fbff
-).setStrokeStyle(4, 0x1d5fa7);
+    35
+);
+
+rinkGraphics.lineStyle(4, 0x1d5fa7, 1);
+rinkGraphics.strokeRoundedRect(
+    this.cameras.main.centerX - 165,
+    this.cameras.main.centerY - 305,
+    330,
+    610,
+    35
+);
 this.add.rectangle(
     this.cameras.main.centerX,
     this.cameras.main.centerY,

@@ -60,6 +60,13 @@ this.add.rectangle(
     620,
     0xf4fbff
 ).setStrokeStyle(4, 0x1d5fa7);
+this.add.rectangle(
+    this.cameras.main.centerX,
+    this.cameras.main.centerY,
+    6,
+    620,
+    0xff0000
+);
 });
 
 

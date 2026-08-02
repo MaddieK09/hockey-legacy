@@ -66,6 +66,20 @@ this.add.rectangle(
     330,
     4,
     0xff0000
+    );
+    this.add.rectangle(
+    this.cameras.main.centerX,
+    this.cameras.main.centerY - 150,
+    330,
+    4,
+    0x1d5fa7
+);
+this.add.rectangle(
+    this.cameras.main.centerX,
+    this.cameras.main.centerY + 150,
+    330,
+    4,
+    0x1d5fa7
 );
 });
 

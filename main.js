@@ -115,22 +115,22 @@ rinkGraphics.fillCircle(
 );
 rinkGraphics.lineStyle(3, 0xff3b30, 1);
 
-rinkGraphics.strokeCircle(
+rinkGraphics.fillCircle(
     this.cameras.main.centerX - 85,
     this.cameras.main.centerY - 225,
     34
 );
-rinkGraphics.strokeCircle(
+rinkGraphics.fillCircle(
     this.cameras.main.centerX + 85,
     this.cameras.main.centerY - 225,
     34
 );
-rinkGraphics.strokeCircle(
+rinkGraphics.fillCircle(
     this.cameras.main.centerX - 85,
     this.cameras.main.centerY + 225,
     34
 );
-rinkGraphics.strokeCircle(
+rinkGraphics.fillCircle(
     this.cameras.main.centerX + 85,
     this.cameras.main.centerY + 225,
     34

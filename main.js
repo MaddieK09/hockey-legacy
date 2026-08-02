@@ -18,7 +18,7 @@ const game = new Phaser.Game(config);
 
 function create() {
 
-    this.add.text(
+const titleText = this.add.text(
         this.cameras.main.centerX,
         80,
         "HOCKEY LEGACY",
@@ -28,7 +28,7 @@ function create() {
         }
     ).setOrigin(0.5);
 
-    this.add.text(
+const versionText = this.add.text(
         this.cameras.main.centerX,
         170,
         "Version 0.0.1",
@@ -51,6 +51,8 @@ playButton.on("pointerdown", () => {
     this.cameras.main.setBackgroundColor("#d8f0ff");
 
     playButton.setVisible(false);
+titleText.setVisible(false);
+versionText.setVisible(false);
 
 });
 

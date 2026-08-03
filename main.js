@@ -156,7 +156,7 @@ this.cameras.main.centerY - 298
 
 rinkGraphics.arc(
     this.cameras.main.centerX,
-this.cameras.main.centerY - 298
+this.cameras.main.centerY - 298,
     40,
     0,
     Math.PI,
@@ -183,7 +183,7 @@ this.cameras.main.centerY + 298
 
 rinkGraphics.arc(
     this.cameras.main.centerX,
-this.cameras.main.centerY + 298
+this.cameras.main.centerY + 298,
     40,
     Math.PI,
     Math.PI * 2,

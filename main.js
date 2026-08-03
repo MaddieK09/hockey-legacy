@@ -191,6 +191,16 @@ rinkGraphics.fillCircle(
     this.cameras.main.centerY + 300,
     5
 );
+rinkGraphics.lineStyle(3, 0xff3b30, 1);
+
+rinkGraphics.strokeArc(
+    this.cameras.main.centerX,
+    this.cameras.main.centerY,
+    28,
+    Phaser.Math.DegToRad(180),
+    Phaser.Math.DegToRad(360),
+    false
+);
 });
 
 

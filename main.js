@@ -154,6 +154,20 @@ this.cameras.main.centerY + 235,
     70
 );
 rinkGraphics.fillStyle(0xff3b30, 1);
+rinkGraphics.fillRect(
+    this.cameras.main.centerX - 18,
+    this.cameras.main.centerY - 302,
+    36,
+    4
+);
+
+rinkGraphics.fillRect(
+    this.cameras.main.centerX - 18,
+    this.cameras.main.centerY + 298,
+    36,
+    4
+);
+
 rinkGraphics.fillCircle(
     this.cameras.main.centerX - 18,
     this.cameras.main.centerY - 300,

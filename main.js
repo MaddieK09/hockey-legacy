@@ -153,6 +153,30 @@ this.cameras.main.centerY + 235,
     80,
     70
 );
+rinkGraphics.fillStyle(0xff3b30, 1);
+rinkGraphics.fillCircle(
+    this.cameras.main.centerX - 18,
+    this.cameras.main.centerY - 300,
+    5
+);
+
+rinkGraphics.fillCircle(
+    this.cameras.main.centerX + 18,
+    this.cameras.main.centerY - 300,
+    5
+);
+
+rinkGraphics.fillCircle(
+    this.cameras.main.centerX - 18,
+    this.cameras.main.centerY + 300,
+    5
+);
+
+rinkGraphics.fillCircle(
+    this.cameras.main.centerX + 18,
+    this.cameras.main.centerY + 300,
+    5
+);
 });
 
 

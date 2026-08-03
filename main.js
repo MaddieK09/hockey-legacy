@@ -194,15 +194,29 @@ rinkGraphics.fillCircle(
 rinkGraphics.lineStyle(3, 0xff3b30, 1);
 
 rinkGraphics.lineBetween(
-this.cameras.main.centerX + 160,
-this.cameras.main.centerY - 18,
-this.cameras.main.centerX + 148,
+    this.cameras.main.centerX + 165,
+    this.cameras.main.centerY - 28,
+    this.cameras.main.centerX + 154,
+    this.cameras.main.centerY - 26
+);
+
+rinkGraphics.lineBetween(
+    this.cameras.main.centerX + 154,
+    this.cameras.main.centerY - 26,
+    this.cameras.main.centerX + 145,
     this.cameras.main.centerY - 20
 );
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX + 145,
     this.cameras.main.centerY - 20,
+    this.cameras.main.centerX + 139,
+    this.cameras.main.centerY - 11
+);
+
+rinkGraphics.lineBetween(
+    this.cameras.main.centerX + 139,
+    this.cameras.main.centerY - 11,
     this.cameras.main.centerX + 137,
     this.cameras.main.centerY
 );
@@ -210,15 +224,29 @@ rinkGraphics.lineBetween(
 rinkGraphics.lineBetween(
     this.cameras.main.centerX + 137,
     this.cameras.main.centerY,
-this.cameras.main.centerX + 148,
+    this.cameras.main.centerX + 139,
+    this.cameras.main.centerY + 11
+);
+
+rinkGraphics.lineBetween(
+    this.cameras.main.centerX + 139,
+    this.cameras.main.centerY + 11,
+    this.cameras.main.centerX + 145,
     this.cameras.main.centerY + 20
 );
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX + 145,
     this.cameras.main.centerY + 20,
-this.cameras.main.centerX + 160,
-this.cameras.main.centerY + 18
+    this.cameras.main.centerX + 154,
+    this.cameras.main.centerY + 26
+);
+
+rinkGraphics.lineBetween(
+    this.cameras.main.centerX + 154,
+    this.cameras.main.centerY + 26,
+    this.cameras.main.centerX + 165,
+    this.cameras.main.centerY + 28
 );
 });
 

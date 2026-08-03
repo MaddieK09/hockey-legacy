@@ -138,21 +138,61 @@ rinkGraphics.strokeCircle(
     this.cameras.main.centerY + 225,
     34
 );
+// Top goal crease
+rinkGraphics.fillStyle(0xbfe9ff, 0.75);
 rinkGraphics.lineStyle(3, 0x4fc3ff, 1);
 
-rinkGraphics.strokeEllipse(
-    this.cameras.main.centerX,
-    this.cameras.main.centerY - 235,
-    80,
-    70
+rinkGraphics.beginPath();
+
+rinkGraphics.moveTo(
+    this.cameras.main.centerX - 40,
+    this.cameras.main.centerY - 300
 );
 
-rinkGraphics.strokeEllipse(
-    this.cameras.main.centerX,
-this.cameras.main.centerY + 235,
-    80,
-    70
+rinkGraphics.lineTo(
+    this.cameras.main.centerX + 40,
+    this.cameras.main.centerY - 300
 );
+
+rinkGraphics.arc(
+    this.cameras.main.centerX,
+    this.cameras.main.centerY - 300,
+    40,
+    0,
+    Math.PI,
+    false
+);
+
+rinkGraphics.closePath();
+rinkGraphics.fillPath();
+rinkGraphics.strokePath();
+
+
+// Bottom goal crease
+rinkGraphics.beginPath();
+
+rinkGraphics.moveTo(
+    this.cameras.main.centerX + 40,
+    this.cameras.main.centerY + 300
+);
+
+rinkGraphics.lineTo(
+    this.cameras.main.centerX - 40,
+    this.cameras.main.centerY + 300
+);
+
+rinkGraphics.arc(
+    this.cameras.main.centerX,
+    this.cameras.main.centerY + 300,
+    40,
+    Math.PI,
+    Math.PI * 2,
+    false
+);
+
+rinkGraphics.closePath();
+rinkGraphics.fillPath();
+rinkGraphics.strokePath();
 rinkGraphics.fillStyle(0xff3b30, 1);
 rinkGraphics.fillRect(
     this.cameras.main.centerX - 18,

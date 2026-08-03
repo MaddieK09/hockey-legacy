@@ -252,7 +252,7 @@ rinkGraphics.lineBetween(
     this.cameras.main.centerX - 18,
     this.cameras.main.centerY - 280,
     this.cameras.main.centerX - 18,
-    this.cameras.main.centerY - 280
+    this.cameras.main.centerY - 294
 );
 
 rinkGraphics.lineBetween(

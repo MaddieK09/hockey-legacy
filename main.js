@@ -239,27 +239,27 @@ rinkGraphics.lineBetween(
 );
 
 // Top red goal frame
-rinkGraphics.lineStyle(4, 0xff3b30, 1);
+rinkGraphics.fillStyle(0xff3b30, 1);
 
-rinkGraphics.lineBetween(
+rinkGraphics.fillRect(
     this.cameras.main.centerX - 18,
-    this.cameras.main.centerY - 280,
-    this.cameras.main.centerX + 18,
-    this.cameras.main.centerY - 280
+    this.cameras.main.centerY - 282,
+    36,
+    4
 );
 
-rinkGraphics.lineBetween(
-    this.cameras.main.centerX - 18,
-    this.cameras.main.centerY - 280,
-    this.cameras.main.centerX - 18,
-    this.cameras.main.centerY - 294
+rinkGraphics.fillRect(
+    this.cameras.main.centerX - 20,
+    this.cameras.main.centerY - 294,
+    4,
+    14
 );
 
-rinkGraphics.lineBetween(
-    this.cameras.main.centerX + 18,
-    this.cameras.main.centerY - 280,
-    this.cameras.main.centerX + 18,
-    this.cameras.main.centerY - 294
+rinkGraphics.fillRect(
+    this.cameras.main.centerX + 16,
+    this.cameras.main.centerY - 294,
+    4,
+    14
 );
 
 

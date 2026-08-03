@@ -198,44 +198,44 @@ rinkGraphics.lineStyle(1, 0xb8c4cc, 1);
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX - 18,
-    this.cameras.main.centerY - 300,
+    this.cameras.main.centerY - 280,
     this.cameras.main.centerX - 14,
-    this.cameras.main.centerY - 310
+    this.cameras.main.centerY - 290
 );
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX + 18,
-    this.cameras.main.centerY - 300,
+    this.cameras.main.centerY - 280,
     this.cameras.main.centerX + 14,
-    this.cameras.main.centerY - 310
+    this.cameras.main.centerY - 290
 );
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX - 14,
-    this.cameras.main.centerY - 310,
+    this.cameras.main.centerY - 290,
     this.cameras.main.centerX + 14,
-    this.cameras.main.centerY - 310
+    this.cameras.main.centerY - 290
 );
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX - 9,
-    this.cameras.main.centerY - 300,
+    this.cameras.main.centerY - 280,
     this.cameras.main.centerX - 7,
-    this.cameras.main.centerY - 310
+    this.cameras.main.centerY - 290
 );
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX,
-    this.cameras.main.centerY - 300,
+    this.cameras.main.centerY - 280,
     this.cameras.main.centerX,
-    this.cameras.main.centerY - 310
+    this.cameras.main.centerY - 290
 );
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX + 9,
-    this.cameras.main.centerY - 300,
+    this.cameras.main.centerY - 280,
     this.cameras.main.centerX + 7,
-    this.cameras.main.centerY - 310
+    this.cameras.main.centerY - 290
 );
 
 // Top red goal frame
@@ -243,21 +243,21 @@ rinkGraphics.lineStyle(4, 0xff3b30, 1);
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX - 18,
-    this.cameras.main.centerY - 300,
+    this.cameras.main.centerY - 280,
     this.cameras.main.centerX + 18,
-    this.cameras.main.centerY - 300
+    this.cameras.main.centerY - 280
 );
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX - 18,
-    this.cameras.main.centerY - 300,
+    this.cameras.main.centerY - 280,
     this.cameras.main.centerX - 18,
-    this.cameras.main.centerY - 294
+    this.cameras.main.centerY - 280
 );
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX + 18,
-    this.cameras.main.centerY - 300,
+    this.cameras.main.centerY - 280,
     this.cameras.main.centerX + 18,
     this.cameras.main.centerY - 294
 );
@@ -268,44 +268,44 @@ rinkGraphics.lineStyle(1, 0xb8c4cc, 1);
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX - 18,
-    this.cameras.main.centerY + 300,
+    this.cameras.main.centerY + 280,
     this.cameras.main.centerX - 14,
-    this.cameras.main.centerY + 310
+    this.cameras.main.centerY + 290
 );
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX + 18,
-    this.cameras.main.centerY + 300,
+    this.cameras.main.centerY + 280,
     this.cameras.main.centerX + 14,
-    this.cameras.main.centerY + 310
+    this.cameras.main.centerY + 290
 );
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX - 14,
-    this.cameras.main.centerY + 310,
+    this.cameras.main.centerY + 290,
     this.cameras.main.centerX + 14,
-    this.cameras.main.centerY + 310
+    this.cameras.main.centerY + 290
 );
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX - 9,
-    this.cameras.main.centerY + 300,
+    this.cameras.main.centerY + 280,
     this.cameras.main.centerX - 7,
-    this.cameras.main.centerY + 310
+    this.cameras.main.centerY + 290
 );
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX,
-    this.cameras.main.centerY + 300,
+    this.cameras.main.centerY + 280,
     this.cameras.main.centerX,
-    this.cameras.main.centerY + 310
+    this.cameras.main.centerY + 290
 );
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX + 9,
-    this.cameras.main.centerY + 300,
+    this.cameras.main.centerY + 280,
     this.cameras.main.centerX + 7,
-    this.cameras.main.centerY + 310
+    this.cameras.main.centerY + 290
 );
 
 // Bottom red goal frame
@@ -313,23 +313,23 @@ rinkGraphics.lineStyle(4, 0xff3b30, 1);
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX - 18,
-    this.cameras.main.centerY + 300,
+    this.cameras.main.centerY + 280,
     this.cameras.main.centerX + 18,
-    this.cameras.main.centerY + 300
+    this.cameras.main.centerY + 280
 );
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX - 18,
-    this.cameras.main.centerY + 300,
+    this.cameras.main.centerY + 280,
     this.cameras.main.centerX - 18,
-    this.cameras.main.centerY + 294
+    this.cameras.main.centerY + 280
 );
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX + 18,
-    this.cameras.main.centerY + 300,
+    this.cameras.main.centerY + 280,
     this.cameras.main.centerX + 18,
-    this.cameras.main.centerY + 294
+    this.cameras.main.centerY + 280
 );
 rinkGraphics.lineStyle(3, 0xff3b30, 1);
 

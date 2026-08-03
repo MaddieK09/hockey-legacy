@@ -193,18 +193,33 @@ rinkGraphics.fillCircle(
 );
 rinkGraphics.lineStyle(3, 0xff3b30, 1);
 
-rinkGraphics.beginPath();
-
-rinkGraphics.arc(
-    this.cameras.main.centerX,
-    this.cameras.main.centerY,
-    28,
-    Math.PI,
-    Math.PI * 2,
-    false
+rinkGraphics.lineBetween(
+    this.cameras.main.centerX + 165,
+    this.cameras.main.centerY - 28,
+    this.cameras.main.centerX + 145,
+    this.cameras.main.centerY - 20
 );
 
-rinkGraphics.strokePath();
+rinkGraphics.lineBetween(
+    this.cameras.main.centerX + 145,
+    this.cameras.main.centerY - 20,
+    this.cameras.main.centerX + 137,
+    this.cameras.main.centerY
+);
+
+rinkGraphics.lineBetween(
+    this.cameras.main.centerX + 137,
+    this.cameras.main.centerY,
+    this.cameras.main.centerX + 145,
+    this.cameras.main.centerY + 20
+);
+
+rinkGraphics.lineBetween(
+    this.cameras.main.centerX + 145,
+    this.cameras.main.centerY + 20,
+    this.cameras.main.centerX + 165,
+    this.cameras.main.centerY + 28
+);
 });
 
 

@@ -142,16 +142,16 @@ rinkGraphics.lineStyle(3, 0x4fc3ff, 1);
 
 rinkGraphics.strokeEllipse(
     this.cameras.main.centerX,
-    this.cameras.main.centerY - 285,
-    96,
-    48
+    this.cameras.main.centerY - 235,
+    80,
+    70
 );
 
 rinkGraphics.strokeEllipse(
     this.cameras.main.centerX,
-    this.cameras.main.centerY + 285,
-    96,
-    48
+this.cameras.main.centerY + 235,
+    80,
+    70
 );
 });
 

@@ -146,17 +146,17 @@ rinkGraphics.beginPath();
 
 rinkGraphics.moveTo(
     this.cameras.main.centerX - 40,
-    this.cameras.main.centerY - 300
+this.cameras.main.centerY - 298
 );
 
 rinkGraphics.lineTo(
     this.cameras.main.centerX + 40,
-    this.cameras.main.centerY - 300
+this.cameras.main.centerY - 298
 );
 
 rinkGraphics.arc(
     this.cameras.main.centerX,
-    this.cameras.main.centerY - 300,
+this.cameras.main.centerY - 298
     40,
     0,
     Math.PI,
@@ -173,17 +173,17 @@ rinkGraphics.beginPath();
 
 rinkGraphics.moveTo(
     this.cameras.main.centerX + 40,
-    this.cameras.main.centerY + 300
+this.cameras.main.centerY + 298
 );
 
 rinkGraphics.lineTo(
     this.cameras.main.centerX - 40,
-    this.cameras.main.centerY + 300
+this.cameras.main.centerY + 298
 );
 
 rinkGraphics.arc(
     this.cameras.main.centerX,
-    this.cameras.main.centerY + 300,
+this.cameras.main.centerY + 298
     40,
     Math.PI,
     Math.PI * 2,

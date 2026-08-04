@@ -194,57 +194,58 @@ rinkGraphics.closePath();
 rinkGraphics.fillPath();
 rinkGraphics.strokePath();
 // Top goal net — bird's-eye trapezoid
-rinkGraphics.lineStyle(1, 0xb8c4cc, 1);
+rinkGraphics.lineStyle(2, 0x9fb3c8, 0.9);
 
 // Outer net shape
 rinkGraphics.lineBetween(
     this.cameras.main.centerX - 18,
     this.cameras.main.centerY - 280,
     this.cameras.main.centerX - 14,
-    this.cameras.main.centerY - 294
+    this.cameras.main.centerY - 298
 );
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX - 14,
-    this.cameras.main.centerY - 294,
+    this.cameras.main.centerY - 298,
     this.cameras.main.centerX + 14,
-    this.cameras.main.centerY - 294
+    this.cameras.main.centerY - 298
 );
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX + 14,
-    this.cameras.main.centerY - 294,
+    this.cameras.main.centerY - 298,
     this.cameras.main.centerX + 18,
     this.cameras.main.centerY - 280
 );
 
-// Mesh lines
+// Horizontal mesh
+rinkGraphics.lineBetween(
+    this.cameras.main.centerX - 16,
+    this.cameras.main.centerY - 289,
+    this.cameras.main.centerX + 16,
+    this.cameras.main.centerY - 289
+);
+
+// Vertical mesh
 rinkGraphics.lineBetween(
     this.cameras.main.centerX - 9,
     this.cameras.main.centerY - 280,
     this.cameras.main.centerX - 7,
-    this.cameras.main.centerY - 294
+    this.cameras.main.centerY - 298
 );
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX,
     this.cameras.main.centerY - 280,
     this.cameras.main.centerX,
-    this.cameras.main.centerY - 294
+    this.cameras.main.centerY - 298
 );
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX + 9,
     this.cameras.main.centerY - 280,
     this.cameras.main.centerX + 7,
-    this.cameras.main.centerY - 294
-);
-
-rinkGraphics.lineBetween(
-    this.cameras.main.centerX - 16,
-    this.cameras.main.centerY - 287,
-    this.cameras.main.centerX + 16,
-    this.cameras.main.centerY - 287
+    this.cameras.main.centerY - 298
 );
 
 // Top red goal frame
@@ -273,57 +274,58 @@ rinkGraphics.fillRect(
 
 
 // Bottom goal net — bird's-eye trapezoid
-rinkGraphics.lineStyle(1, 0xb8c4cc, 1);
+rinkGraphics.lineStyle(2, 0x9fb3c8, 0.9);
 
 // Outer net shape
 rinkGraphics.lineBetween(
     this.cameras.main.centerX - 18,
     this.cameras.main.centerY + 280,
     this.cameras.main.centerX - 14,
-    this.cameras.main.centerY + 294
+    this.cameras.main.centerY + 298
 );
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX - 14,
-    this.cameras.main.centerY + 294,
+    this.cameras.main.centerY + 298,
     this.cameras.main.centerX + 14,
-    this.cameras.main.centerY + 294
+    this.cameras.main.centerY + 298
 );
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX + 14,
-    this.cameras.main.centerY + 294,
+    this.cameras.main.centerY + 298,
     this.cameras.main.centerX + 18,
     this.cameras.main.centerY + 280
 );
 
-// Mesh lines
+// Horizontal mesh
+rinkGraphics.lineBetween(
+    this.cameras.main.centerX - 16,
+    this.cameras.main.centerY + 289,
+    this.cameras.main.centerX + 16,
+    this.cameras.main.centerY + 289
+);
+
+// Vertical mesh
 rinkGraphics.lineBetween(
     this.cameras.main.centerX - 9,
     this.cameras.main.centerY + 280,
     this.cameras.main.centerX - 7,
-    this.cameras.main.centerY + 294
+    this.cameras.main.centerY + 298
 );
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX,
     this.cameras.main.centerY + 280,
     this.cameras.main.centerX,
-    this.cameras.main.centerY + 294
+    this.cameras.main.centerY + 298
 );
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX + 9,
     this.cameras.main.centerY + 280,
     this.cameras.main.centerX + 7,
-    this.cameras.main.centerY + 294
-);
-
-rinkGraphics.lineBetween(
-    this.cameras.main.centerX - 16,
-    this.cameras.main.centerY + 287,
-    this.cameras.main.centerX + 16,
-    this.cameras.main.centerY + 287
+    this.cameras.main.centerY + 298
 );
 
 // Bottom red goal frame

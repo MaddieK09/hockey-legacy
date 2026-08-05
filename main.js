@@ -30,8 +30,11 @@ function create() {
         cornerRadius: 55
     };
 
-    rink.centerX = scene.cameras.main.centerX;
-    rink.centerY = scene.cameras.main.centerY;
+    rink.centerX =
+        scene.cameras.main.centerX;
+
+    rink.centerY =
+        scene.cameras.main.centerY;
 
     rink.left =
         rink.centerX -
@@ -124,6 +127,21 @@ function create() {
             resetTimer: null
         },
 
+        passCall: {
+            active: false,
+
+            cooldown: 0,
+            cooldownLength: 1.15,
+
+            displayTimer: 0,
+
+            button: null,
+            label: null,
+
+            ring: null,
+            text: null
+        },
+
         possession: {
             owner: null,
 
@@ -178,39 +196,44 @@ function create() {
         }
     };
 
-    const titleText = scene.add.text(
-        rink.centerX,
-        80,
-        "HOCKEY LEGACY",
-        {
-            font: "40px Arial",
-            fill: "#ffffff"
-        }
-    ).setOrigin(0.5);
+    const titleText =
+        scene.add.text(
+            rink.centerX,
+            80,
+            "HOCKEY LEGACY",
+            {
+                font: "40px Arial",
+                fill: "#ffffff"
+            }
+        )
+            .setOrigin(0.5);
 
-    const versionText = scene.add.text(
-        rink.centerX,
-        170,
-        "Version 0.0.62",
-        {
-            font: "24px Arial",
-            fill: "#ffffff"
-        }
-    ).setOrigin(0.5);
+    const versionText =
+        scene.add.text(
+            rink.centerX,
+            170,
+            "Version 0.0.63",
+            {
+                font: "24px Arial",
+                fill: "#ffffff"
+            }
+        )
+            .setOrigin(0.5);
 
-    const playButton = scene.add.text(
-        rink.centerX,
-        300,
-        "▶ PLAY",
-        {
-            font: "36px Arial",
-            fill: "#ffff00"
-        }
-    )
-        .setOrigin(0.5)
-        .setInteractive({
-            useHandCursor: true
-        });
+    const playButton =
+        scene.add.text(
+            rink.centerX,
+            300,
+            "▶ PLAY",
+            {
+                font: "36px Arial",
+                fill: "#ffff00"
+            }
+        )
+            .setOrigin(0.5)
+            .setInteractive({
+                useHandCursor: true
+            });
 
     playButton.on(
         "pointerdown",
@@ -263,6 +286,10 @@ function create() {
             );
 
             createKeyboardControls(
+                scene
+            );
+
+            createPassCallVisuals(
                 scene
             );
 
@@ -362,6 +389,11 @@ function update(time, delta) {
             0.05
         );
 
+    updatePassCallState(
+        this,
+        deltaSeconds
+    );
+
     if (
         state.playStopped ||
         state.goalPresentation.active
@@ -375,6 +407,10 @@ function update(time, delta) {
         );
 
         updateTeammateIndicators(
+            this
+        );
+
+        updatePassCallVisuals(
             this
         );
 
@@ -422,7 +458,6 @@ function update(time, delta) {
     }
 
     if (
-        !state.goalPresentation.active &&
         !state.playStopped &&
         !state.possession.owner
     ) {
@@ -433,7 +468,6 @@ function update(time, delta) {
 
     if (
         state.possession.owner &&
-        !state.goalPresentation.active &&
         !state.playStopped
     ) {
         hardLockPossessedPuck(
@@ -448,6 +482,10 @@ function update(time, delta) {
     updateTeammateIndicators(
         this
     );
+
+    updatePassCallVisuals(
+        this
+    );
 }
 
 /* =========================================================
@@ -458,13 +496,10 @@ function createScoreboard(scene) {
     const state =
         scene.gameState;
 
-    const rink =
-        state.rink;
-
     state.score.text =
         scene.add.text(
-            rink.centerX,
-            rink.top + 17,
+            state.rink.centerX,
+            state.rink.top + 17,
             "0  -  0",
             {
                 font:
@@ -622,10 +657,6 @@ function createGoalPresentation(scene) {
             .setVisible(false);
 }
 
-/* =========================================================
-   ROBUST GOAL DETECTION
-========================================================= */
-
 function checkForGoal(
     scene,
     previousX,
@@ -649,11 +680,6 @@ function checkForGoal(
             state
         );
 
-    /*
-     * Detect the exact X coordinate where the
-     * puck crossed the goal line. This prevents
-     * fast shots from skipping goal detection.
-     */
     const crossedTopLine =
         previousY >
             geometry.topLineY &&
@@ -764,10 +790,6 @@ function isCrossingInsideGoalMouth(
             state
         );
 
-    /*
-     * A goal counts only when the whole puck
-     * fits between the inside edges of the posts.
-     */
     const innerLeft =
         state.rink.centerX -
         geometry.mouthHalfWidth +
@@ -811,6 +833,9 @@ function registerGoal(
     state.possession.passTarget = null;
     state.possession.passTargetType = null;
     state.possession.pickupCooldown = 999;
+
+    state.passCall.active = false;
+    state.passCall.displayTimer = 0;
 
     state.puckVelocityX = 0;
     state.puckVelocityY = 0;
@@ -910,7 +935,6 @@ function showGoalPresentation(
             "Back.Out",
 
         yoyo: true,
-
         hold: 600
     });
 
@@ -1112,6 +1136,10 @@ function resetPlayersForCenterFaceoff(
             ? 0.7
             : 0.35;
 
+    state.passCall.active = false;
+    state.passCall.cooldown = 0;
+    state.passCall.displayTimer = 0;
+
     state.playerVelocityX = 0;
     state.playerVelocityY = 0;
 
@@ -1211,6 +1239,10 @@ function resetPlayersForCenterFaceoff(
     );
 
     updatePlayerStick(
+        scene
+    );
+
+    updatePassCallVisuals(
         scene
     );
 }
@@ -1961,13 +1993,10 @@ function createPlayer(scene) {
     const state =
         scene.gameState;
 
-    const rink =
-        state.rink;
-
     state.player =
         scene.add.circle(
-            rink.centerX,
-            rink.centerY + 72,
+            state.rink.centerX,
+            state.rink.centerY + 72,
             state.playerRadius,
             0x1769d2
         )
@@ -3325,6 +3354,9 @@ function givePuckToPlayer(
     state.possession.passTargetType =
         null;
 
+    state.passCall.active = false;
+    state.passCall.displayTimer = 0;
+
     hardLockPossessedPuck(
         scene
     );
@@ -3373,6 +3405,447 @@ function releasePossession(
 
     state.possession.pickupCooldown =
         cooldown;
+}
+
+/* =========================================================
+   CALL FOR PASS
+========================================================= */
+
+function createPassCallButton(
+    scene,
+    x,
+    y
+) {
+    const state =
+        scene.gameState;
+
+    const passCall =
+        state.passCall;
+
+    passCall.button =
+        scene.add.rectangle(
+            x,
+            y,
+            104,
+            36,
+            0x3d79b8,
+            0.95
+        )
+            .setStrokeStyle(
+                2,
+                0xffffff,
+                0.95
+            )
+            .setDepth(110)
+            .setInteractive({
+                useHandCursor: true
+            });
+
+    passCall.label =
+        scene.add.text(
+            x,
+            y,
+            "CALL PASS",
+            {
+                font:
+                    "bold 11px Arial",
+
+                fill:
+                    "#ffffff"
+            }
+        )
+            .setOrigin(0.5)
+            .setDepth(111)
+            .setInteractive({
+                useHandCursor: true
+            });
+
+    const activateCall = (
+        pointer,
+        localX,
+        localY,
+        event
+    ) => {
+        requestPass(
+            scene
+        );
+
+        if (
+            event &&
+            event.stopPropagation
+        ) {
+            event.stopPropagation();
+        }
+    };
+
+    passCall.button.on(
+        "pointerdown",
+        activateCall
+    );
+
+    passCall.label.on(
+        "pointerdown",
+        activateCall
+    );
+}
+
+function createPassCallVisuals(
+    scene
+) {
+    const state =
+        scene.gameState;
+
+    state.passCall.ring =
+        scene.add.graphics()
+            .setDepth(25);
+
+    state.passCall.text =
+        scene.add.text(
+            state.player.x,
+            state.player.y - 35,
+            "PASS!",
+            {
+                font:
+                    "bold 12px Arial",
+
+                fill:
+                    "#ffffff",
+
+                backgroundColor:
+                    "#1769d2",
+
+                padding: {
+                    left: 6,
+                    right: 6,
+                    top: 3,
+                    bottom: 3
+                }
+            }
+        )
+            .setOrigin(0.5)
+            .setDepth(26)
+            .setVisible(false);
+}
+
+function requestPass(scene) {
+    const state =
+        scene.gameState;
+
+    const passCall =
+        state.passCall;
+
+    if (
+        state.playStopped ||
+        state.goalPresentation.active ||
+        passCall.cooldown > 0
+    ) {
+        return;
+    }
+
+    const puckCarrier =
+        state.possession.owner;
+
+    if (
+        !puckCarrier ||
+        puckCarrier === state.player
+    ) {
+        passCall.cooldown = 0.35;
+
+        flashPassCallUnavailable(
+            scene
+        );
+
+        return;
+    }
+
+    passCall.active = true;
+
+    passCall.cooldown =
+        passCall.cooldownLength;
+
+    passCall.displayTimer = 0.85;
+
+    const playerGeometry =
+        getPlayerStickGeometry(
+            state
+        );
+
+    const carrierGeometry =
+        getTeammateStickGeometry(
+            puckCarrier
+        );
+
+    const distanceToPlayer =
+        Phaser.Math.Distance.Between(
+            carrierGeometry.puckAnchorX,
+            carrierGeometry.puckAnchorY,
+            playerGeometry.puckAnchorX,
+            playerGeometry.puckAnchorY
+        );
+
+    const distanceToGoal =
+        Phaser.Math.Distance.Between(
+            puckCarrier.body.x,
+            puckCarrier.body.y,
+            state.offensiveGoal.x,
+            state.offensiveGoal.y
+        );
+
+    const playerIsAhead =
+        state.player.y <
+        puckCarrier.body.y;
+
+    const playerIsReasonablyOpen =
+        distanceToPlayer >= 42 &&
+        distanceToPlayer <= 270;
+
+    let passChance = 0.72;
+
+    if (
+        playerIsAhead
+    ) {
+        passChance += 0.12;
+    }
+
+    if (
+        distanceToPlayer < 180
+    ) {
+        passChance += 0.08;
+    }
+
+    if (
+        distanceToPlayer > 235
+    ) {
+        passChance -= 0.18;
+    }
+
+    /*
+     * If the teammate is in a very dangerous
+     * shooting position, they may ignore the call.
+     */
+    if (
+        distanceToGoal < 85
+    ) {
+        passChance -= 0.48;
+    } else if (
+        distanceToGoal < 120
+    ) {
+        passChance -= 0.25;
+    }
+
+    passChance =
+        Phaser.Math.Clamp(
+            passChance,
+            0.15,
+            0.94
+        );
+
+    if (
+        playerIsReasonablyOpen &&
+        Math.random() <
+            passChance
+    ) {
+        passFromTeammate(
+            scene,
+            puckCarrier,
+            {
+                type: "player",
+                target: state.player
+            }
+        );
+
+        return;
+    }
+
+    /*
+     * The call still makes the AI reconsider
+     * almost immediately, even when ignored.
+     */
+    puckCarrier.decisionTimer =
+        Math.min(
+            puckCarrier.decisionTimer,
+            0.12
+        );
+}
+
+function updatePassCallState(
+    scene,
+    deltaSeconds
+) {
+    const state =
+        scene.gameState;
+
+    const passCall =
+        state.passCall;
+
+    passCall.cooldown =
+        Math.max(
+            0,
+            passCall.cooldown -
+                deltaSeconds
+        );
+
+    passCall.displayTimer =
+        Math.max(
+            0,
+            passCall.displayTimer -
+                deltaSeconds
+        );
+
+    if (
+        passCall.displayTimer <= 0
+    ) {
+        passCall.active = false;
+    }
+}
+
+function updatePassCallVisuals(
+    scene
+) {
+    const state =
+        scene.gameState;
+
+    const passCall =
+        state.passCall;
+
+    if (
+        !passCall.button ||
+        !passCall.label
+    ) {
+        return;
+    }
+
+    const teammateHasPuck =
+        state.possession.owner &&
+        state.possession.owner !==
+            state.player;
+
+    const buttonAvailable =
+        !state.playStopped &&
+        teammateHasPuck &&
+        passCall.cooldown <= 0;
+
+    if (buttonAvailable) {
+        passCall.button
+            .setFillStyle(
+                0x2477c9,
+                0.98
+            )
+            .setAlpha(1);
+
+        passCall.label
+            .setText(
+                "CALL PASS"
+            )
+            .setAlpha(1);
+    } else if (
+        passCall.cooldown > 0
+    ) {
+        passCall.button
+            .setFillStyle(
+                0x495e73,
+                0.82
+            )
+            .setAlpha(0.82);
+
+        passCall.label
+            .setText(
+                "WAIT"
+            )
+            .setAlpha(0.82);
+    } else {
+        passCall.button
+            .setFillStyle(
+                0x495e73,
+                0.72
+            )
+            .setAlpha(0.72);
+
+        passCall.label
+            .setText(
+                "CALL PASS"
+            )
+            .setAlpha(0.72);
+    }
+
+    if (
+        passCall.ring
+    ) {
+        passCall.ring.clear();
+    }
+
+    if (
+        passCall.text
+    ) {
+        passCall.text.setVisible(
+            false
+        );
+    }
+
+    if (
+        !passCall.active ||
+        state.playStopped
+    ) {
+        return;
+    }
+
+    const pulse =
+        1 +
+        Math.sin(
+            scene.time.now * 0.018
+        ) *
+        0.18;
+
+    passCall.ring.lineStyle(
+        3,
+        0x28e7ff,
+        0.95
+    );
+
+    passCall.ring.strokeCircle(
+        state.player.x,
+        state.player.y,
+        18 * pulse
+    );
+
+    passCall.text
+        .setPosition(
+            state.player.x,
+            state.player.y - 35
+        )
+        .setVisible(true);
+}
+
+function flashPassCallUnavailable(
+    scene
+) {
+    const passCall =
+        scene.gameState.passCall;
+
+    if (
+        !passCall.button ||
+        !passCall.label
+    ) {
+        return;
+    }
+
+    passCall.label.setText(
+        "NO PUCK"
+    );
+
+    passCall.button.setFillStyle(
+        0x8f2020,
+        0.95
+    );
+
+    scene.time.delayedCall(
+        300,
+        () => {
+            updatePassCallVisuals(
+                scene
+            );
+        }
+    );
 }
 
 /* =========================================================
@@ -3460,6 +3933,17 @@ function updateAIPuckDecision(
         shotChance += 0.18;
     }
 
+    /*
+     * Calling for a pass lowers the normal shot
+     * chance slightly, except from very close range.
+     */
+    if (
+        state.passCall.active &&
+        distanceToGoal >= 90
+    ) {
+        shotChance *= 0.55;
+    }
+
     if (
         Math.random() <
         shotChance
@@ -3482,10 +3966,21 @@ function updateAIPuckDecision(
         teammate.possessionTime >
         2.9;
 
+    let passChance = 0.43;
+
+    if (
+        state.passCall.active &&
+        passTarget &&
+        passTarget.type === "player"
+    ) {
+        passChance = 0.86;
+    }
+
     if (
         passTarget &&
         (
-            Math.random() < 0.43 ||
+            Math.random() <
+                passChance ||
             forceDecision
         )
     ) {
@@ -3570,7 +4065,7 @@ function chooseAIPassTarget(
 
         if (
             distance < 45 ||
-            distance > 250
+            distance > 270
         ) {
             continue;
         }
@@ -3600,6 +4095,14 @@ function chooseAIPassTarget(
             teammate.body.y
         ) {
             score += 0.35;
+        }
+
+        if (
+            state.passCall.active &&
+            candidate.type ===
+                "player"
+        ) {
+            score += 2.25;
         }
 
         if (
@@ -3633,9 +4136,6 @@ function shootFromTeammate(
             teammate
         );
 
-    /*
-     * Keep the target safely inside the posts.
-     */
     const targetX =
         state.offensiveGoal.x +
         Phaser.Math.Between(
@@ -3689,6 +4189,8 @@ function shootFromTeammate(
     state.possession.passTargetType =
         null;
 
+    state.passCall.active = false;
+
     state.puck.setPosition(
         geometry.puckAnchorX,
         geometry.puckAnchorY
@@ -3737,27 +4239,39 @@ function passFromTeammate(
         passTarget.type ===
         "player"
     ) {
-        const geometry =
+        const playerGeometry =
             getPlayerStickGeometry(
                 state
             );
 
+        /*
+         * Lead the controlled player slightly
+         * based on current skating velocity.
+         */
         targetX =
-            geometry.puckAnchorX;
+            playerGeometry.puckAnchorX +
+            state.playerVelocityX *
+                0.12;
 
         targetY =
-            geometry.puckAnchorY;
+            playerGeometry.puckAnchorY +
+            state.playerVelocityY *
+                0.12;
     } else {
-        const geometry =
+        const teammateGeometry =
             getTeammateStickGeometry(
                 passTarget.target
             );
 
         targetX =
-            geometry.puckAnchorX;
+            teammateGeometry.puckAnchorX +
+            passTarget.target.velocityX *
+                0.1;
 
         targetY =
-            geometry.puckAnchorY;
+            teammateGeometry.puckAnchorY +
+            passTarget.target.velocityY *
+                0.1;
     }
 
     let directionX =
@@ -3791,7 +4305,7 @@ function passFromTeammate(
             230 +
             distance * 0.62,
             245,
-            380
+            390
         );
 
     releasePossession(
@@ -3819,6 +4333,13 @@ function passFromTeammate(
         passSpeed;
 
     teammate.possessionTime = 0;
+
+    if (
+        passTarget.type ===
+        "player"
+    ) {
+        state.passCall.active = false;
+    }
 }
 
 /* =========================================================
@@ -4671,6 +5192,12 @@ function createMobileControls(
         rink.right - 58,
         controlsY - 78
     );
+
+    createPassCallButton(
+        scene,
+        rink.left + 58,
+        controlsY - 78
+    );
 }
 
 function createMovementJoystick(
@@ -5445,7 +5972,11 @@ function createKeyboardControls(
 
                     space:
                         Phaser.Input.Keyboard
-                            .KeyCodes.SPACE
+                            .KeyCodes.SPACE,
+
+                    callPass:
+                        Phaser.Input.Keyboard
+                            .KeyCodes.C
                 });
     } catch (error) {
         console.warn(
@@ -5555,6 +6086,17 @@ function updateKeyboardInput(
             state.facingX,
             state.facingY,
             360
+        );
+    }
+
+    if (
+        Phaser.Input.Keyboard
+            .JustDown(
+                keyboard.callPass
+            )
+    ) {
+        requestPass(
+            scene
         );
     }
 }

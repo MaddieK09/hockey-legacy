@@ -56,24 +56,39 @@ function create() {
 
         facingAngle: -Math.PI / 2,
         targetFacingAngle: -Math.PI / 2,
-        turnSpeed: 10,
+        turnSpeed: 7,
 
         facingX: 0,
         facingY: -1,
-
-        shootPressed: false,
-        shootWasPressed: false,
 
         controls: {
             up: false,
             down: false,
             left: false,
-            right: false,
-            shoot: false
+            right: false
         },
 
         keyboard: null,
-        mobileButtons: []
+        mobileButtons: [],
+
+        aim: {
+            active: false,
+            pointerId: null,
+
+            centerX: 0,
+            centerY: 0,
+
+            directionX: 0,
+            directionY: -1,
+
+            distance: 0,
+            maximumDistance: 38,
+
+            base: null,
+            knob: null,
+            label: null,
+            guide: null
+        }
     };
 
     const titleText = scene.add.text(
@@ -89,7 +104,7 @@ function create() {
     const versionText = scene.add.text(
         rink.centerX,
         170,
-        "Version 0.0.51",
+        "Version 0.0.52",
         {
             font: "24px Arial",
             fill: "#ffffff"
@@ -132,16 +147,28 @@ function create() {
         updatePlayerStick(scene);
     });
 
-    scene.input.on("pointerup", () => {
-        releaseAllMobileControls(scene);
+    scene.input.on("pointermove", pointer => {
+        updateAimPointer(scene, pointer);
+    });
+
+    scene.input.on("pointerup", pointer => {
+        finishAimPointer(scene, pointer, true);
+        releaseDirectionalControls(scene);
+    });
+
+    scene.input.on("pointerupoutside", pointer => {
+        finishAimPointer(scene, pointer, true);
+        releaseDirectionalControls(scene);
     });
 
     scene.input.on("gameout", () => {
-        releaseAllMobileControls(scene);
+        cancelAim(scene);
+        releaseDirectionalControls(scene);
     });
 
     window.addEventListener("blur", () => {
-        releaseAllMobileControls(scene);
+        cancelAim(scene);
+        releaseDirectionalControls(scene);
     });
 }
 
@@ -159,9 +186,13 @@ function update(time, delta) {
     updatePlayerMovement(this, deltaSeconds);
     updatePuckMovement(this, deltaSeconds);
     handlePlayerPuckContact(this);
-    handleShootInput(this);
     updatePlayerStick(this);
+    updateAimGuide(this);
 }
+
+/* =========================================================
+   RINK
+========================================================= */
 
 function drawRink(scene, rink) {
     const graphics = scene.add.graphics();
@@ -754,6 +785,10 @@ function drawRefereeCrease(graphics, rink) {
     graphics.strokePath();
 }
 
+/* =========================================================
+   PLAYER AND PUCK
+========================================================= */
+
 function createPlayer(scene) {
     const state = scene.gameState;
     const rink = state.rink;
@@ -797,15 +832,16 @@ function createPuck(scene) {
     state.puck.setDepth(22);
 }
 
+/* =========================================================
+   KEYBOARD
+========================================================= */
+
 function createKeyboardControls(scene) {
     const state = scene.gameState;
 
     state.keyboard = null;
 
-    if (
-        !scene.input ||
-        !scene.input.keyboard
-    ) {
+    if (!scene.input || !scene.input.keyboard) {
         return;
     }
 
@@ -835,6 +871,10 @@ function createKeyboardControls(scene) {
     }
 }
 
+/* =========================================================
+   MOBILE CONTROLS
+========================================================= */
+
 function createMobileControls(scene) {
     const state = scene.gameState;
     const rink = state.rink;
@@ -851,7 +891,7 @@ function createMobileControls(scene) {
             scene.scale.height - 185
         );
 
-    createControlButton(
+    createDirectionalButton(
         scene,
         controlsCenterX,
         controlsCenterY - directionSpacing,
@@ -860,7 +900,7 @@ function createMobileControls(scene) {
         buttonRadius
     );
 
-    createControlButton(
+    createDirectionalButton(
         scene,
         controlsCenterX,
         controlsCenterY + directionSpacing,
@@ -869,7 +909,7 @@ function createMobileControls(scene) {
         buttonRadius
     );
 
-    createControlButton(
+    createDirectionalButton(
         scene,
         controlsCenterX - directionSpacing,
         controlsCenterY,
@@ -878,7 +918,7 @@ function createMobileControls(scene) {
         buttonRadius
     );
 
-    createControlButton(
+    createDirectionalButton(
         scene,
         controlsCenterX + directionSpacing,
         controlsCenterY,
@@ -887,37 +927,25 @@ function createMobileControls(scene) {
         buttonRadius
     );
 
-    createControlButton(
+    createAimControl(
         scene,
         rink.right - 62,
-        controlsCenterY,
-        "SHOOT",
-        "shoot",
-        32,
-        true
+        controlsCenterY
     );
 }
 
-function createControlButton(
+function createDirectionalButton(
     scene,
     x,
     y,
     symbol,
     controlName,
-    radius,
-    isActionButton = false
+    radius
 ) {
     const state = scene.gameState;
 
-    const defaultColor =
-        isActionButton
-            ? 0xa72727
-            : 0x17375e;
-
-    const pressedColor =
-        isActionButton
-            ? 0xe04444
-            : 0x2f71b7;
+    const defaultColor = 0x17375e;
+    const pressedColor = 0x2f71b7;
 
     const button = scene.add.circle(
         x,
@@ -949,10 +977,7 @@ function createControlButton(
         y,
         symbol,
         {
-            font: isActionButton
-                ? "bold 11px Arial"
-                : "21px Arial",
-
+            font: "21px Arial",
             fill: "#ffffff",
             align: "center"
         }
@@ -977,10 +1002,7 @@ function createControlButton(
             0.95
         );
 
-        if (
-            event &&
-            event.stopPropagation
-        ) {
+        if (event && event.stopPropagation) {
             event.stopPropagation();
         }
     };
@@ -1012,11 +1034,229 @@ function createControlButton(
     });
 }
 
-function releaseAllMobileControls(scene) {
+function createAimControl(scene, x, y) {
+    const state = scene.gameState;
+    const aim = state.aim;
+
+    aim.centerX = x;
+    aim.centerY = y;
+
+    aim.base = scene.add.circle(
+        x,
+        y,
+        35,
+        0x8f2020,
+        0.84
+    );
+
+    aim.base.setStrokeStyle(
+        2,
+        0xffffff,
+        0.95
+    );
+
+    aim.base.setDepth(100);
+
+    aim.base.setInteractive(
+        new Phaser.Geom.Circle(
+            35,
+            35,
+            35
+        ),
+        Phaser.Geom.Circle.Contains
+    );
+
+    aim.knob = scene.add.circle(
+        x,
+        y,
+        17,
+        0xe04444,
+        1
+    );
+
+    aim.knob.setStrokeStyle(
+        2,
+        0xffffff,
+        0.95
+    );
+
+    aim.knob.setDepth(102);
+
+    aim.label = scene.add.text(
+        x,
+        y,
+        "AIM",
+        {
+            font: "bold 10px Arial",
+            fill: "#ffffff"
+        }
+    )
+        .setOrigin(0.5)
+        .setDepth(103);
+
+    aim.guide = scene.add.graphics();
+    aim.guide.setDepth(19);
+
+    const startAim = (
+        pointer,
+        localX,
+        localY,
+        event
+    ) => {
+        if (aim.active) {
+            return;
+        }
+
+        aim.active = true;
+        aim.pointerId = pointer.id;
+
+        aim.base.setFillStyle(
+            0xb62b2b,
+            0.95
+        );
+
+        updateAimFromPointer(
+            scene,
+            pointer
+        );
+
+        if (event && event.stopPropagation) {
+            event.stopPropagation();
+        }
+    };
+
+    aim.base.on("pointerdown", startAim);
+    aim.knob.setInteractive({ useHandCursor: true });
+    aim.label.setInteractive({ useHandCursor: true });
+
+    aim.knob.on("pointerdown", startAim);
+    aim.label.on("pointerdown", startAim);
+}
+
+function updateAimPointer(scene, pointer) {
+    const state = scene.gameState;
+
+    if (
+        !state ||
+        !state.gameStarted ||
+        !state.aim.active ||
+        state.aim.pointerId !== pointer.id
+    ) {
+        return;
+    }
+
+    updateAimFromPointer(scene, pointer);
+}
+
+function updateAimFromPointer(scene, pointer) {
+    const state = scene.gameState;
+    const aim = state.aim;
+
+    let deltaX =
+        pointer.x - aim.centerX;
+
+    let deltaY =
+        pointer.y - aim.centerY;
+
+    let distance = Math.sqrt(
+        deltaX * deltaX +
+        deltaY * deltaY
+    );
+
+    if (distance < 0.001) {
+        deltaX = state.facingX;
+        deltaY = state.facingY;
+        distance = 1;
+    }
+
+    const directionX = deltaX / distance;
+    const directionY = deltaY / distance;
+
+    const clampedDistance =
+        Math.min(
+            distance,
+            aim.maximumDistance
+        );
+
+    aim.directionX = directionX;
+    aim.directionY = directionY;
+    aim.distance = clampedDistance;
+
+    aim.knob.x =
+        aim.centerX +
+        directionX * clampedDistance;
+
+    aim.knob.y =
+        aim.centerY +
+        directionY * clampedDistance;
+
+    aim.label.x = aim.knob.x;
+    aim.label.y = aim.knob.y;
+
+    state.targetFacingAngle =
+        Math.atan2(
+            directionY,
+            directionX
+        );
+}
+
+function finishAimPointer(
+    scene,
+    pointer,
+    shouldShoot
+) {
+    const state = scene.gameState;
+
+    if (
+        !state ||
+        !state.aim.active ||
+        state.aim.pointerId !== pointer.id
+    ) {
+        return;
+    }
+
+    if (shouldShoot) {
+        shootPuckWithAim(scene);
+    }
+
+    resetAimControl(scene);
+}
+
+function cancelAim(scene) {
     if (
         !scene ||
-        !scene.gameState
+        !scene.gameState ||
+        !scene.gameState.aim.active
     ) {
+        return;
+    }
+
+    resetAimControl(scene);
+}
+
+function resetAimControl(scene) {
+    const aim = scene.gameState.aim;
+
+    aim.active = false;
+    aim.pointerId = null;
+    aim.distance = 0;
+
+    aim.knob.x = aim.centerX;
+    aim.knob.y = aim.centerY;
+
+    aim.label.x = aim.centerX;
+    aim.label.y = aim.centerY;
+
+    aim.base.setFillStyle(
+        0x8f2020,
+        0.84
+    );
+
+    aim.guide.clear();
+}
+
+function releaseDirectionalControls(scene) {
+    if (!scene || !scene.gameState) {
         return;
     }
 
@@ -1026,18 +1266,18 @@ function releaseAllMobileControls(scene) {
     state.controls.down = false;
     state.controls.left = false;
     state.controls.right = false;
-    state.controls.shoot = false;
 
-    for (
-        const mobileButton
-        of state.mobileButtons
-    ) {
+    for (const mobileButton of state.mobileButtons) {
         mobileButton.button.setFillStyle(
             mobileButton.defaultColor,
             0.82
         );
     }
 }
+
+/* =========================================================
+   PLAYER INPUT AND MOVEMENT
+========================================================= */
 
 function updatePlayerInput(scene) {
     const state = scene.gameState;
@@ -1047,7 +1287,6 @@ function updatePlayerInput(scene) {
     let keyboardDown = false;
     let keyboardLeft = false;
     let keyboardRight = false;
-    let keyboardShoot = false;
 
     if (keyboard) {
         keyboardUp =
@@ -1065,9 +1304,6 @@ function updatePlayerInput(scene) {
         keyboardRight =
             keyboard.right.isDown ||
             keyboard.d.isDown;
-
-        keyboardShoot =
-            keyboard.space.isDown;
     }
 
     let directionX = 0;
@@ -1113,11 +1349,13 @@ function updatePlayerInput(scene) {
         directionX /= length;
         directionY /= length;
 
-        state.targetFacingAngle =
-            Math.atan2(
-                directionY,
-                directionX
-            );
+        if (!state.aim.active) {
+            state.targetFacingAngle =
+                Math.atan2(
+                    directionY,
+                    directionX
+                );
+        }
     }
 
     state.playerVelocityX =
@@ -1126,9 +1364,14 @@ function updatePlayerInput(scene) {
     state.playerVelocityY =
         directionY * state.playerSpeed;
 
-    state.shootPressed =
-        state.controls.shoot ||
-        keyboardShoot;
+    if (
+        keyboard &&
+        Phaser.Input.Keyboard.JustDown(
+            keyboard.space
+        )
+    ) {
+        shootPuckInFacingDirection(scene);
+    }
 }
 
 function updatePlayerFacing(
@@ -1196,6 +1439,10 @@ function updatePlayerMovement(
     player.y = correctedPosition.y;
 }
 
+/* =========================================================
+   PUCK MOVEMENT
+========================================================= */
+
 function updatePuckMovement(
     scene,
     deltaSeconds
@@ -1218,19 +1465,28 @@ function updatePuckMovement(
 
     const movementSteps = Math.max(
         1,
-        Math.ceil(travelDistance / 3)
+        Math.ceil(travelDistance / 1.5)
     );
-
-    const stepX = travelX / movementSteps;
-    const stepY = travelY / movementSteps;
 
     for (
         let step = 0;
         step < movementSteps;
         step += 1
     ) {
+        const stepX =
+            state.puckVelocityX *
+            deltaSeconds /
+            movementSteps;
+
+        const stepY =
+            state.puckVelocityY *
+            deltaSeconds /
+            movementSteps;
+
         puck.x += stepX;
         puck.y += stepY;
+
+        handleGoalNetCollisions(scene);
 
         const correctedPosition =
             clampPointInsideRoundedRink(
@@ -1250,8 +1506,6 @@ function updatePuckMovement(
 
         puck.x = correctedPosition.x;
         puck.y = correctedPosition.y;
-
-        handleGoalNetCollisions(scene);
     }
 
     const frameFriction = Math.pow(
@@ -1262,22 +1516,18 @@ function updatePuckMovement(
     state.puckVelocityX *= frameFriction;
     state.puckVelocityY *= frameFriction;
 
-    if (
-        Math.abs(
-            state.puckVelocityX
-        ) < 0.5
-    ) {
+    if (Math.abs(state.puckVelocityX) < 0.5) {
         state.puckVelocityX = 0;
     }
 
-    if (
-        Math.abs(
-            state.puckVelocityY
-        ) < 0.5
-    ) {
+    if (Math.abs(state.puckVelocityY) < 0.5) {
         state.puckVelocityY = 0;
     }
 }
+
+/* =========================================================
+   SOLID GOAL COLLISIONS
+========================================================= */
 
 function handleGoalNetCollisions(scene) {
     const state = scene.gameState;
@@ -1301,64 +1551,86 @@ function handleGoalNetCollisions(scene) {
     const bottomBackY =
         bottomGoalLineY + netDepth;
 
-    const collisionSegments = [
-        {
-            x1: rink.centerX - mouthHalfWidth,
-            y1: topGoalLineY,
-            x2: rink.centerX - backHalfWidth,
-            y2: topBackY
-        },
-        {
-            x1: rink.centerX + mouthHalfWidth,
-            y1: topGoalLineY,
-            x2: rink.centerX + backHalfWidth,
-            y2: topBackY
-        },
-        {
-            x1: rink.centerX - backHalfWidth,
-            y1: topBackY,
-            x2: rink.centerX + backHalfWidth,
-            y2: topBackY
-        },
+    const topInteriorPoint = {
+        x: rink.centerX,
+        y: topGoalLineY - netDepth / 2
+    };
 
-        {
-            x1: rink.centerX - mouthHalfWidth,
-            y1: bottomGoalLineY,
-            x2: rink.centerX - backHalfWidth,
-            y2: bottomBackY
-        },
-        {
-            x1: rink.centerX + mouthHalfWidth,
-            y1: bottomGoalLineY,
-            x2: rink.centerX + backHalfWidth,
-            y2: bottomBackY
-        },
-        {
-            x1: rink.centerX - backHalfWidth,
-            y1: bottomBackY,
-            x2: rink.centerX + backHalfWidth,
-            y2: bottomBackY
-        }
-    ];
+    const bottomInteriorPoint = {
+        x: rink.centerX,
+        y: bottomGoalLineY + netDepth / 2
+    };
 
-    for (
-        const segment
-        of collisionSegments
-    ) {
-        resolvePuckSegmentCollision(
-            state,
-            puck,
-            segment.x1,
-            segment.y1,
-            segment.x2,
-            segment.y2
-        );
-    }
+    resolveOneSidedNetSegment(
+        state,
+        puck,
+        rink.centerX - mouthHalfWidth,
+        topGoalLineY,
+        rink.centerX - backHalfWidth,
+        topBackY,
+        topInteriorPoint.x,
+        topInteriorPoint.y
+    );
 
-    const postRadius =
+    resolveOneSidedNetSegment(
+        state,
+        puck,
+        rink.centerX + backHalfWidth,
+        topBackY,
+        rink.centerX + mouthHalfWidth,
+        topGoalLineY,
+        topInteriorPoint.x,
+        topInteriorPoint.y
+    );
+
+    resolveOneSidedNetSegment(
+        state,
+        puck,
+        rink.centerX - backHalfWidth,
+        topBackY,
+        rink.centerX + backHalfWidth,
+        topBackY,
+        topInteriorPoint.x,
+        topInteriorPoint.y
+    );
+
+    resolveOneSidedNetSegment(
+        state,
+        puck,
+        rink.centerX - backHalfWidth,
+        bottomBackY,
+        rink.centerX - mouthHalfWidth,
+        bottomGoalLineY,
+        bottomInteriorPoint.x,
+        bottomInteriorPoint.y
+    );
+
+    resolveOneSidedNetSegment(
+        state,
+        puck,
+        rink.centerX + mouthHalfWidth,
+        bottomGoalLineY,
+        rink.centerX + backHalfWidth,
+        bottomBackY,
+        bottomInteriorPoint.x,
+        bottomInteriorPoint.y
+    );
+
+    resolveOneSidedNetSegment(
+        state,
+        puck,
+        rink.centerX + backHalfWidth,
+        bottomBackY,
+        rink.centerX - backHalfWidth,
+        bottomBackY,
+        bottomInteriorPoint.x,
+        bottomInteriorPoint.y
+    );
+
+    const postCollisionRadius =
         state.puckRadius + 3;
 
-    const goalPosts = [
+    const posts = [
         {
             x: rink.centerX - mouthHalfWidth,
             y: topGoalLineY
@@ -1377,27 +1649,26 @@ function handleGoalNetCollisions(scene) {
         }
     ];
 
-    for (
-        const post
-        of goalPosts
-    ) {
+    for (const post of posts) {
         resolvePuckCircleCollision(
             state,
             puck,
             post.x,
             post.y,
-            postRadius
+            postCollisionRadius
         );
     }
 }
 
-function resolvePuckSegmentCollision(
+function resolveOneSidedNetSegment(
     state,
     puck,
     x1,
     y1,
     x2,
-    y2
+    y2,
+    interiorX,
+    interiorY
 ) {
     const segmentX = x2 - x1;
     const segmentY = y2 - y1;
@@ -1410,13 +1681,10 @@ function resolvePuckSegmentCollision(
         return;
     }
 
-    const puckOffsetX = puck.x - x1;
-    const puckOffsetY = puck.y - y1;
-
     let projection =
         (
-            puckOffsetX * segmentX +
-            puckOffsetY * segmentY
+            (puck.x - x1) * segmentX +
+            (puck.y - y1) * segmentY
         ) /
         segmentLengthSquared;
 
@@ -1428,76 +1696,111 @@ function resolvePuckSegmentCollision(
         );
 
     const closestX =
-        x1 + segmentX * projection;
+        x1 +
+        segmentX * projection;
 
     const closestY =
-        y1 + segmentY * projection;
+        y1 +
+        segmentY * projection;
 
-    const deltaX = puck.x - closestX;
-    const deltaY = puck.y - closestY;
+    const segmentLength =
+        Math.sqrt(segmentLengthSquared);
 
-    const distanceSquared =
-        deltaX * deltaX +
-        deltaY * deltaY;
+    let normalX =
+        -segmentY / segmentLength;
+
+    let normalY =
+        segmentX / segmentLength;
+
+    const interiorDirectionX =
+        interiorX - closestX;
+
+    const interiorDirectionY =
+        interiorY - closestY;
+
+    const normalPointsInside =
+        normalX * interiorDirectionX +
+        normalY * interiorDirectionY;
+
+    if (normalPointsInside < 0) {
+        normalX *= -1;
+        normalY *= -1;
+    }
+
+    const signedDistance =
+        (
+            puck.x - closestX
+        ) * normalX +
+        (
+            puck.y - closestY
+        ) * normalY;
 
     const collisionRadius =
         state.puckRadius + 1.5;
 
-    if (
-        distanceSquared >=
-        collisionRadius * collisionRadius
-    ) {
+    if (signedDistance >= collisionRadius) {
         return;
     }
 
-    let distance =
-        Math.sqrt(distanceSquared);
+    const distanceFromClosestSquared =
+        (
+            puck.x - closestX
+        ) *
+        (
+            puck.x - closestX
+        ) +
+        (
+            puck.y - closestY
+        ) *
+        (
+            puck.y - closestY
+        );
 
-    let normalX;
-    let normalY;
+    const endpointAllowance =
+        collisionRadius *
+        collisionRadius *
+        1.6;
 
-    if (distance > 0.001) {
-        normalX = deltaX / distance;
-        normalY = deltaY / distance;
-    } else {
-        const segmentLength =
-            Math.sqrt(segmentLengthSquared);
-
-        normalX =
-            -segmentY /
-            segmentLength;
-
-        normalY =
-            segmentX /
-            segmentLength;
-
-        distance = 0;
+    if (
+        projection === 0 ||
+        projection === 1
+    ) {
+        if (
+            distanceFromClosestSquared >
+            endpointAllowance
+        ) {
+            return;
+        }
     }
 
-    const overlap =
-        collisionRadius - distance;
+    const correction =
+        collisionRadius -
+        signedDistance;
 
-    puck.x += normalX * overlap;
-    puck.y += normalY * overlap;
+    puck.x += normalX * correction;
+    puck.y += normalY * correction;
 
-    const velocityAlongNormal =
+    const velocityIntoWall =
         state.puckVelocityX *
         normalX +
         state.puckVelocityY *
         normalY;
 
-    if (velocityAlongNormal < 0) {
-        const bounceStrength = 1.45;
+    if (velocityIntoWall < 0) {
+        const restitution = 0.42;
 
         state.puckVelocityX -=
-            bounceStrength *
-            velocityAlongNormal *
+            (1 + restitution) *
+            velocityIntoWall *
             normalX;
 
         state.puckVelocityY -=
-            bounceStrength *
-            velocityAlongNormal *
+            (1 + restitution) *
+            velocityIntoWall *
             normalY;
+
+        state.puckVelocityX *= 0.86;
+        state.puckVelocityY *= 0.86;
     }
 }
 
@@ -1550,17 +1853,23 @@ function resolvePuckCircleCollision(
         normalY;
 
     if (velocityAlongNormal < 0) {
+        const restitution = 0.55;
+
         state.puckVelocityX -=
-            1.55 *
+            (1 + restitution) *
             velocityAlongNormal *
             normalX;
 
         state.puckVelocityY -=
-            1.55 *
+            (1 + restitution) *
             velocityAlongNormal *
             normalY;
     }
 }
+
+/* =========================================================
+   PUCK HANDLING AND SHOOTING
+========================================================= */
 
 function handlePlayerPuckContact(scene) {
     const state = scene.gameState;
@@ -1610,33 +1919,59 @@ function handlePlayerPuckContact(scene) {
     );
 
     const pushSpeed =
-        42 +
-        movementSpeed * 0.7;
+        34 +
+        movementSpeed * 0.55;
 
     state.puckVelocityX =
         normalX * pushSpeed +
-        state.playerVelocityX * 0.42;
+        state.playerVelocityX * 0.38;
 
     state.puckVelocityY =
         normalY * pushSpeed +
-        state.playerVelocityY * 0.42;
+        state.playerVelocityY * 0.38;
 }
 
-function handleShootInput(scene) {
+function shootPuckWithAim(scene) {
+    const state = scene.gameState;
+    const aim = state.aim;
+
+    const powerPercent =
+        Phaser.Math.Clamp(
+            aim.distance /
+            aim.maximumDistance,
+            0,
+            1
+        );
+
+    const shotSpeed =
+        220 +
+        powerPercent * 230;
+
+    shootPuckInDirection(
+        scene,
+        aim.directionX,
+        aim.directionY,
+        shotSpeed
+    );
+}
+
+function shootPuckInFacingDirection(scene) {
     const state = scene.gameState;
 
-    if (
-        state.shootPressed &&
-        !state.shootWasPressed
-    ) {
-        shootPuck(scene);
-    }
-
-    state.shootWasPressed =
-        state.shootPressed;
+    shootPuckInDirection(
+        scene,
+        state.facingX,
+        state.facingY,
+        350
+    );
 }
 
-function shootPuck(scene) {
+function shootPuckInDirection(
+    scene,
+    directionX,
+    directionY,
+    shotSpeed
+) {
     const state = scene.gameState;
 
     const player = state.player;
@@ -1653,75 +1988,73 @@ function shootPuck(scene) {
     const shootingDistance =
         state.playerRadius +
         state.puckRadius +
-        25;
+        30;
 
-    if (
-        distance >
-        shootingDistance
-    ) {
+    if (distance > shootingDistance) {
         return;
     }
 
-    let shotDirectionX =
-        state.facingX;
+    const directionLength = Math.sqrt(
+        directionX * directionX +
+        directionY * directionY
+    );
 
-    let shotDirectionY =
-        state.facingY;
-
-    if (distance > 0.001) {
-        const puckDirectionX =
-            deltaX / distance;
-
-        const puckDirectionY =
-            deltaY / distance;
-
-        const facingDotPuck =
-            puckDirectionX *
-            state.facingX +
-            puckDirectionY *
-            state.facingY;
-
-        if (facingDotPuck > 0.05) {
-            shotDirectionX =
-                puckDirectionX;
-
-            shotDirectionY =
-                puckDirectionY;
-        }
+    if (directionLength < 0.001) {
+        return;
     }
 
-    const shotSpeed = 340;
+    directionX /= directionLength;
+    directionY /= directionLength;
 
-    state.puckVelocityX =
-        shotDirectionX *
-        shotSpeed +
-        state.playerVelocityX *
-        0.25;
+    const puckDirectionX =
+        distance > 0.001
+            ? deltaX / distance
+            : directionX;
 
-    state.puckVelocityY =
-        shotDirectionY *
-        shotSpeed +
-        state.playerVelocityY *
-        0.25;
+    const puckDirectionY =
+        distance > 0.001
+            ? deltaY / distance
+            : directionY;
+
+    const aimDotPuck =
+        directionX * puckDirectionX +
+        directionY * puckDirectionY;
+
+    if (aimDotPuck < -0.25) {
+        return;
+    }
+
+    const placementDistance =
+        state.playerRadius +
+        state.puckRadius +
+        9;
 
     puck.x =
         player.x +
-        shotDirectionX *
-        (
-            state.playerRadius +
-            state.puckRadius +
-            8
-        );
+        directionX *
+        placementDistance;
 
     puck.y =
         player.y +
-        shotDirectionY *
-        (
-            state.playerRadius +
-            state.puckRadius +
-            8
-        );
+        directionY *
+        placementDistance;
+
+    state.puckVelocityX =
+        directionX *
+        shotSpeed +
+        state.playerVelocityX *
+        0.18;
+
+    state.puckVelocityY =
+        directionY *
+        shotSpeed +
+        state.playerVelocityY *
+        0.18;
 }
+
+/* =========================================================
+   STICK AND AIM GUIDE
+========================================================= */
 
 function updatePlayerStick(scene) {
     const state = scene.gameState;
@@ -1729,10 +2062,7 @@ function updatePlayerStick(scene) {
     const player = state.player;
     const stick = state.playerStick;
 
-    if (
-        !player ||
-        !stick
-    ) {
+    if (!player || !stick) {
         return;
     }
 
@@ -1792,6 +2122,79 @@ function updatePlayerStick(scene) {
         perpendicularY * 8
     );
 }
+
+function updateAimGuide(scene) {
+    const state = scene.gameState;
+    const aim = state.aim;
+
+    if (!aim.guide) {
+        return;
+    }
+
+    aim.guide.clear();
+
+    if (!aim.active) {
+        return;
+    }
+
+    const player = state.player;
+
+    const powerPercent =
+        Phaser.Math.Clamp(
+            aim.distance /
+            aim.maximumDistance,
+            0,
+            1
+        );
+
+    const guideLength =
+        45 +
+        powerPercent * 60;
+
+    const startX =
+        player.x +
+        aim.directionX * 20;
+
+    const startY =
+        player.y +
+        aim.directionY * 20;
+
+    const endX =
+        player.x +
+        aim.directionX * guideLength;
+
+    const endY =
+        player.y +
+        aim.directionY * guideLength;
+
+    aim.guide.lineStyle(
+        3,
+        0xff3b30,
+        0.72
+    );
+
+    aim.guide.lineBetween(
+        startX,
+        startY,
+        endX,
+        endY
+    );
+
+    aim.guide.fillStyle(
+        0xff3b30,
+        0.85
+    );
+
+    aim.guide.fillCircle(
+        endX,
+        endY,
+        3
+    );
+}
+
+/* =========================================================
+   ROUNDED RINK COLLISION
+========================================================= */
 
 function clampPointInsideRoundedRink(
     x,
@@ -1866,10 +2269,7 @@ function clampPointInsideRoundedRink(
 
     let cornerCenter = null;
 
-    if (
-        isLeftSide &&
-        isTopSide
-    ) {
+    if (isLeftSide && isTopSide) {
         cornerCenter = {
             x:
                 rink.left +

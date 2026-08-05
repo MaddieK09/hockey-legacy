@@ -42,7 +42,7 @@ function create() {
     const versionText = scene.add.text(
         rink.centerX,
         170,
-        "Version 0.0.35",
+        "Version 0.0.36",
         {
             font: "24px Arial",
             fill: "#ffffff"
@@ -80,14 +80,12 @@ function drawRink(scene, rink) {
     drawIceSurface(graphics, rink);
     drawMainLines(graphics, rink);
     drawCenterIce(graphics, rink);
-    drawFaceoffCircles(graphics, rink);
-    drawFaceoffDots(graphics, rink);
+    drawFaceoffLayout(graphics, rink);
     drawGoalsAndCreases(graphics, rink);
     drawRefereeCrease(graphics, rink);
 }
 
 function drawIceSurface(graphics, rink) {
-    // Ice
     graphics.fillStyle(0xf4fbff, 1);
 
     graphics.fillRoundedRect(
@@ -98,7 +96,6 @@ function drawIceSurface(graphics, rink) {
         rink.cornerRadius
     );
 
-    // Boards
     graphics.lineStyle(4, 0x1d5fa7, 1);
 
     graphics.strokeRoundedRect(
@@ -114,7 +111,8 @@ function drawMainLines(graphics, rink) {
     const lineLeft = rink.left + 3;
     const lineRight = rink.right - 3;
 
-    // Center red line
+    const blueLineOffset = 150;
+
     graphics.lineStyle(4, 0xff3b30, 1);
 
     graphics.lineBetween(
@@ -124,27 +122,25 @@ function drawMainLines(graphics, rink) {
         rink.centerY
     );
 
-    // Blue lines
     graphics.lineStyle(4, 0x1d5fa7, 1);
 
     graphics.lineBetween(
         lineLeft,
-        rink.centerY - 150,
+        rink.centerY - blueLineOffset,
         lineRight,
-        rink.centerY - 150
+        rink.centerY - blueLineOffset
     );
 
     graphics.lineBetween(
         lineLeft,
-        rink.centerY + 150,
+        rink.centerY + blueLineOffset,
         lineRight,
-        rink.centerY + 150
+        rink.centerY + blueLineOffset
     );
 }
 
 function drawCenterIce(graphics, rink) {
-    // Center circle
-    graphics.lineStyle(4, 0x4fc3ff, 1);
+    graphics.lineStyle(3, 0x4fc3ff, 1);
 
     graphics.strokeCircle(
         rink.centerX,
@@ -152,7 +148,6 @@ function drawCenterIce(graphics, rink) {
         42
     );
 
-    // Center faceoff dot
     graphics.fillStyle(0x4fc3ff, 1);
 
     graphics.fillCircle(
@@ -162,98 +157,189 @@ function drawCenterIce(graphics, rink) {
     );
 }
 
-function drawFaceoffCircles(graphics, rink) {
-    const circleOffsetX = 85;
-    const circleOffsetY = 225;
+function drawFaceoffLayout(graphics, rink) {
+    const offensiveOffsetX = 85;
+    const offensiveOffsetY = 215;
+
+    const neutralOffsetX = 95;
+    const neutralOffsetY = 75;
+
     const circleRadius = 34;
+
+    const topLeftX = rink.centerX - offensiveOffsetX;
+    const topRightX = rink.centerX + offensiveOffsetX;
+    const topY = rink.centerY - offensiveOffsetY;
+
+    const bottomLeftX = rink.centerX - offensiveOffsetX;
+    const bottomRightX = rink.centerX + offensiveOffsetX;
+    const bottomY = rink.centerY + offensiveOffsetY;
 
     graphics.lineStyle(3, 0xff3b30, 1);
 
-    graphics.strokeCircle(
-        rink.centerX - circleOffsetX,
-        rink.centerY - circleOffsetY,
+    drawFaceoffCircle(
+        graphics,
+        topLeftX,
+        topY,
         circleRadius
     );
 
-    graphics.strokeCircle(
-        rink.centerX + circleOffsetX,
-        rink.centerY - circleOffsetY,
+    drawFaceoffCircle(
+        graphics,
+        topRightX,
+        topY,
         circleRadius
     );
 
-    graphics.strokeCircle(
-        rink.centerX - circleOffsetX,
-        rink.centerY + circleOffsetY,
+    drawFaceoffCircle(
+        graphics,
+        bottomLeftX,
+        bottomY,
         circleRadius
     );
 
-    graphics.strokeCircle(
-        rink.centerX + circleOffsetX,
-        rink.centerY + circleOffsetY,
+    drawFaceoffCircle(
+        graphics,
+        bottomRightX,
+        bottomY,
         circleRadius
     );
-}
 
-function drawFaceoffDots(graphics, rink) {
     graphics.fillStyle(0xff3b30, 1);
 
-    // Offensive-zone faceoff dots
     drawFaceoffDot(
         graphics,
-        rink.centerX - 85,
-        rink.centerY - 225
+        topLeftX,
+        topY,
+        4
     );
 
     drawFaceoffDot(
         graphics,
-        rink.centerX + 85,
-        rink.centerY - 225
+        topRightX,
+        topY,
+        4
     );
 
     drawFaceoffDot(
         graphics,
-        rink.centerX - 85,
-        rink.centerY + 225
+        bottomLeftX,
+        bottomY,
+        4
     );
 
     drawFaceoffDot(
         graphics,
-        rink.centerX + 85,
-        rink.centerY + 225
-    );
-
-    // Neutral-zone faceoff dots
-    drawFaceoffDot(
-        graphics,
-        rink.centerX - 95,
-        rink.centerY - 75
+        bottomRightX,
+        bottomY,
+        4
     );
 
     drawFaceoffDot(
         graphics,
-        rink.centerX + 95,
-        rink.centerY - 75
+        rink.centerX - neutralOffsetX,
+        rink.centerY - neutralOffsetY,
+        3
     );
 
     drawFaceoffDot(
         graphics,
-        rink.centerX - 95,
-        rink.centerY + 75
+        rink.centerX + neutralOffsetX,
+        rink.centerY - neutralOffsetY,
+        3
     );
 
     drawFaceoffDot(
         graphics,
-        rink.centerX + 95,
-        rink.centerY + 75
+        rink.centerX - neutralOffsetX,
+        rink.centerY + neutralOffsetY,
+        3
+    );
+
+    drawFaceoffDot(
+        graphics,
+        rink.centerX + neutralOffsetX,
+        rink.centerY + neutralOffsetY,
+        3
     );
 }
 
-function drawFaceoffDot(graphics, x, y) {
-    graphics.fillCircle(x, y, 3);
+function drawFaceoffCircle(graphics, x, y, radius) {
+    graphics.strokeCircle(
+        x,
+        y,
+        radius
+    );
+
+    const hashLength = 8;
+    const hashGap = 4;
+
+    graphics.lineBetween(
+        x - hashGap,
+        y - radius - hashLength,
+        x - hashGap,
+        y - radius + 2
+    );
+
+    graphics.lineBetween(
+        x + hashGap,
+        y - radius - hashLength,
+        x + hashGap,
+        y - radius + 2
+    );
+
+    graphics.lineBetween(
+        x - hashGap,
+        y + radius - 2,
+        x - hashGap,
+        y + radius + hashLength
+    );
+
+    graphics.lineBetween(
+        x + hashGap,
+        y + radius - 2,
+        x + hashGap,
+        y + radius + hashLength
+    );
+
+    graphics.lineBetween(
+        x - radius - hashLength,
+        y - hashGap,
+        x - radius + 2,
+        y - hashGap
+    );
+
+    graphics.lineBetween(
+        x - radius - hashLength,
+        y + hashGap,
+        x - radius + 2,
+        y + hashGap
+    );
+
+    graphics.lineBetween(
+        x + radius - 2,
+        y - hashGap,
+        x + radius + hashLength,
+        y - hashGap
+    );
+
+    graphics.lineBetween(
+        x + radius - 2,
+        y + hashGap,
+        x + radius + hashLength,
+        y + hashGap
+    );
+}
+
+function drawFaceoffDot(graphics, x, y, radius) {
+    graphics.fillCircle(
+        x,
+        y,
+        radius
+    );
 }
 
 function drawGoalsAndCreases(graphics, rink) {
-    const goalLineInset = 36;
+    const goalLineInset = 44;
 
     const topGoalLineY = rink.top + goalLineInset;
     const bottomGoalLineY = rink.bottom - goalLineInset;
@@ -303,16 +389,15 @@ function drawGoalLine(graphics, rink, y) {
     graphics.lineStyle(3, 0xff3b30, 1);
 
     graphics.lineBetween(
-        rink.left + 3,
+        rink.left + 4,
         y,
-        rink.right - 3,
+        rink.right - 4,
         y
     );
 }
 
 function drawGoalCrease(graphics, centerX, goalLineY, side) {
     const creaseRadius = 40;
-    const creaseDepth = 32;
 
     graphics.fillStyle(0xbfe9ff, 0.75);
     graphics.lineStyle(3, 0x4fc3ff, 1);
@@ -320,7 +405,6 @@ function drawGoalCrease(graphics, centerX, goalLineY, side) {
     graphics.beginPath();
 
     if (side === "top") {
-        // Straight edge sits on the goal line.
         graphics.moveTo(
             centerX - creaseRadius,
             goalLineY
@@ -331,11 +415,10 @@ function drawGoalCrease(graphics, centerX, goalLineY, side) {
             goalLineY
         );
 
-        // Curve extends inward toward center ice.
         graphics.arc(
             centerX,
             goalLineY,
-            creaseDepth,
+            creaseRadius,
             0,
             Math.PI,
             false
@@ -351,11 +434,10 @@ function drawGoalCrease(graphics, centerX, goalLineY, side) {
             goalLineY
         );
 
-        // Curve extends inward toward center ice.
         graphics.arc(
             centerX,
             goalLineY,
-            creaseDepth,
+            creaseRadius,
             Math.PI,
             Math.PI * 2,
             false
@@ -368,22 +450,16 @@ function drawGoalCrease(graphics, centerX, goalLineY, side) {
 }
 
 function drawGoalNet(graphics, centerX, goalLineY, side) {
-    const mouthHalfWidth = 18;
-    const backHalfWidth = 14;
+    const mouthHalfWidth = 20;
+    const backHalfWidth = 15;
     const netDepth = 20;
 
-    let backY;
+    const direction = side === "top" ? -1 : 1;
+    const backY = goalLineY + netDepth * direction;
+    const middleY = goalLineY + netDepth * 0.5 * direction;
 
-    if (side === "top") {
-        backY = goalLineY - netDepth;
-    } else {
-        backY = goalLineY + netDepth;
-    }
-
-    // Grey netting
     graphics.lineStyle(2, 0x9fb3c8, 0.9);
 
-    // Outer trapezoid
     graphics.lineBetween(
         centerX - mouthHalfWidth,
         goalLineY,
@@ -405,21 +481,17 @@ function drawGoalNet(graphics, centerX, goalLineY, side) {
         goalLineY
     );
 
-    // Middle horizontal mesh
-    const middleY = (goalLineY + backY) / 2;
-
     graphics.lineBetween(
-        centerX - 16,
+        centerX - 18,
         middleY,
-        centerX + 16,
+        centerX + 18,
         middleY
     );
 
-    // Vertical mesh
     graphics.lineBetween(
-        centerX - 9,
+        centerX - 10,
         goalLineY,
-        centerX - 7,
+        centerX - 8,
         backY
     );
 
@@ -431,13 +503,12 @@ function drawGoalNet(graphics, centerX, goalLineY, side) {
     );
 
     graphics.lineBetween(
-        centerX + 9,
+        centerX + 10,
         goalLineY,
-        centerX + 7,
+        centerX + 8,
         backY
     );
 
-    // Red posts and crossbar
     graphics.lineStyle(4, 0xff3b30, 1);
 
     graphics.lineBetween(
@@ -450,15 +521,22 @@ function drawGoalNet(graphics, centerX, goalLineY, side) {
     graphics.lineBetween(
         centerX - mouthHalfWidth,
         goalLineY,
-        centerX - backHalfWidth,
-        backY
+        centerX - mouthHalfWidth,
+        goalLineY + 7 * direction
     );
 
     graphics.lineBetween(
         centerX + mouthHalfWidth,
         goalLineY,
-        centerX + backHalfWidth,
-        backY
+        centerX + mouthHalfWidth,
+        goalLineY + 7 * direction
+    );
+
+    graphics.lineBetween(
+        centerX - mouthHalfWidth,
+        goalLineY + 7 * direction,
+        centerX + mouthHalfWidth,
+        goalLineY + 7 * direction
     );
 }
 

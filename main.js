@@ -5,6 +5,10 @@ const config = {
     height: window.innerHeight,
     backgroundColor: "#0d7a2b",
 
+    input: {
+        activePointers: 5
+    },
+
     scene: {
         create: create,
         update: update
@@ -53,14 +57,20 @@ function create() {
         facingX: 0,
         facingY: -1,
 
+        shootPressed: false,
+        shootWasPressed: false,
+
         controls: {
             up: false,
             down: false,
             left: false,
-            right: false
+            right: false,
+            shoot: false
         },
 
-        keyboard: null
+        keyboard: null,
+
+        mobileButtons: []
     };
 
     const titleText = scene.add.text(
@@ -76,7 +86,7 @@ function create() {
     const versionText = scene.add.text(
         rink.centerX,
         170,
-        "Version 0.0.39",
+        "Version 0.0.49",
         {
             font: "24px Arial",
             fill: "#ffffff"
@@ -96,6 +106,10 @@ function create() {
         .setInteractive({ useHandCursor: true });
 
     playButton.on("pointerdown", () => {
+        if (scene.gameState.gameStarted) {
+            return;
+        }
+
         playButton.disableInteractive();
 
         titleText.setVisible(false);
@@ -111,6 +125,20 @@ function create() {
         createKeyboardControls(scene);
 
         scene.gameState.gameStarted = true;
+
+        updatePlayerStick(scene);
+    });
+
+    scene.input.on("pointerup", () => {
+        releaseAllMobileControls(scene);
+    });
+
+    scene.input.on("gameout", () => {
+        releaseAllMobileControls(scene);
+    });
+
+    window.addEventListener("blur", () => {
+        releaseAllMobileControls(scene);
     });
 }
 
@@ -127,11 +155,14 @@ function update(time, delta) {
     updatePlayerMovement(this, deltaSeconds);
     updatePuckMovement(this, deltaSeconds);
     handlePlayerPuckContact(this);
+    handleShootInput(this);
     updatePlayerStick(this);
 }
 
 function drawRink(scene, rink) {
     const graphics = scene.add.graphics();
+
+    graphics.setDepth(1);
 
     drawIceSurface(graphics, rink);
     drawMainLines(graphics, rink);
@@ -140,7 +171,6 @@ function drawRink(scene, rink) {
     drawGoalsAndCreases(graphics, rink);
     drawGoalieTrapezoids(graphics, rink);
     drawRefereeCrease(graphics, rink);
-
     drawBoardOutline(graphics, rink);
 }
 
@@ -473,7 +503,6 @@ function drawGoalCrease(graphics, centerX, goalLineY, side) {
     const creaseDepth = 32;
 
     const direction = side === "top" ? 1 : -1;
-    const curveCenterY = goalLineY;
 
     graphics.fillStyle(0xbfe9ff, 0.75);
     graphics.lineStyle(3, 0x4fc3ff, 1);
@@ -493,7 +522,7 @@ function drawGoalCrease(graphics, centerX, goalLineY, side) {
 
         graphics.arc(
             centerX,
-            curveCenterY,
+            goalLineY,
             creaseDepth,
             0,
             Math.PI,
@@ -512,7 +541,7 @@ function drawGoalCrease(graphics, centerX, goalLineY, side) {
 
         graphics.arc(
             centerX,
-            curveCenterY,
+            goalLineY,
             creaseDepth,
             Math.PI,
             Math.PI * 2,
@@ -549,8 +578,14 @@ function drawGoalNet(graphics, centerX, goalLineY, side) {
     const netDepth = 28;
 
     const backY = goalLineY + netDepth * direction;
-    const firstMeshY = goalLineY + netDepth * 0.33 * direction;
-    const secondMeshY = goalLineY + netDepth * 0.66 * direction;
+
+    const firstMeshY =
+        goalLineY +
+        netDepth * 0.33 * direction;
+
+    const secondMeshY =
+        goalLineY +
+        netDepth * 0.66 * direction;
 
     graphics.lineStyle(1, 0x9fb3c8, 0.95);
 
@@ -658,8 +693,11 @@ function drawGoalNet(graphics, centerX, goalLineY, side) {
 function drawGoalieTrapezoids(graphics, rink) {
     const goalLineInset = 44;
 
-    const topGoalLineY = rink.top + goalLineInset;
-    const bottomGoalLineY = rink.bottom - goalLineInset;
+    const topGoalLineY =
+        rink.top + goalLineInset;
+
+    const bottomGoalLineY =
+        rink.bottom - goalLineInset;
 
     const innerHalfWidth = 30;
     const outerHalfWidth = 48;
@@ -729,7 +767,10 @@ function createPlayer(scene) {
         1
     );
 
+    state.player.setDepth(20);
+
     state.playerStick = scene.add.graphics();
+    state.playerStick.setDepth(21);
 }
 
 function createPuck(scene) {
@@ -748,32 +789,68 @@ function createPuck(scene) {
         0x555555,
         1
     );
+
+    state.puck.setDepth(22);
 }
 
 function createKeyboardControls(scene) {
-    scene.gameState.keyboard = scene.input.keyboard.addKeys({
-        up: Phaser.Input.Keyboard.KeyCodes.UP,
-        down: Phaser.Input.Keyboard.KeyCodes.DOWN,
-        left: Phaser.Input.Keyboard.KeyCodes.LEFT,
-        right: Phaser.Input.Keyboard.KeyCodes.RIGHT,
+    const state = scene.gameState;
 
-        w: Phaser.Input.Keyboard.KeyCodes.W,
-        s: Phaser.Input.Keyboard.KeyCodes.S,
-        a: Phaser.Input.Keyboard.KeyCodes.A,
-        d: Phaser.Input.Keyboard.KeyCodes.D
-    });
+    state.keyboard = null;
+
+    if (
+        !scene.input ||
+        !scene.input.keyboard
+    ) {
+        return;
+    }
+
+    try {
+        state.keyboard =
+            scene.input.keyboard.addKeys({
+                up: Phaser.Input.Keyboard.KeyCodes.UP,
+                down: Phaser.Input.Keyboard.KeyCodes.DOWN,
+                left: Phaser.Input.Keyboard.KeyCodes.LEFT,
+                right: Phaser.Input.Keyboard.KeyCodes.RIGHT,
+
+                w: Phaser.Input.Keyboard.KeyCodes.W,
+                s: Phaser.Input.Keyboard.KeyCodes.S,
+                a: Phaser.Input.Keyboard.KeyCodes.A,
+                d: Phaser.Input.Keyboard.KeyCodes.D,
+
+                space:
+                    Phaser.Input.Keyboard.KeyCodes.SPACE
+            });
+    } catch (error) {
+        console.warn(
+            "Keyboard controls unavailable:",
+            error
+        );
+
+        state.keyboard = null;
+    }
 }
 
 function createMobileControls(scene) {
-    const buttonRadius = 27;
+    const state = scene.gameState;
+    const rink = state.rink;
 
-    const controlsCenterX = 75;
-    const controlsCenterY = scene.scale.height - 82;
+    const buttonRadius = 23;
+    const directionSpacing = 43;
+
+    const controlsCenterX =
+        rink.left + 62;
+
+    const controlsCenterY =
+        Math.min(
+            rink.bottom - 72,
+            scene.scale.height - 145
+        );
 
     createControlButton(
         scene,
         controlsCenterX,
-        controlsCenterY - 48,
+        controlsCenterY - directionSpacing,
         "▲",
         "up",
         buttonRadius
@@ -782,7 +859,7 @@ function createMobileControls(scene) {
     createControlButton(
         scene,
         controlsCenterX,
-        controlsCenterY + 48,
+        controlsCenterY + directionSpacing,
         "▼",
         "down",
         buttonRadius
@@ -790,7 +867,7 @@ function createMobileControls(scene) {
 
     createControlButton(
         scene,
-        controlsCenterX - 48,
+        controlsCenterX - directionSpacing,
         controlsCenterY,
         "◀",
         "left",
@@ -799,11 +876,24 @@ function createMobileControls(scene) {
 
     createControlButton(
         scene,
-        controlsCenterX + 48,
+        controlsCenterX + directionSpacing,
         controlsCenterY,
         "▶",
         "right",
         buttonRadius
+    );
+
+    const shootX = rink.right - 53;
+    const shootY = controlsCenterY;
+
+    createControlButton(
+        scene,
+        shootX,
+        shootY,
+        "SHOOT",
+        "shoot",
+        32,
+        true
     );
 }
 
@@ -813,7 +903,8 @@ function createControlButton(
     y,
     symbol,
     controlName,
-    radius
+    radius,
+    isActionButton = false
 ) {
     const state = scene.gameState;
 
@@ -821,47 +912,86 @@ function createControlButton(
         x,
         y,
         radius,
-        0x17375e,
-        0.72
+        isActionButton
+            ? 0xa72727
+            : 0x17375e,
+        0.82
     );
 
     button.setStrokeStyle(
         2,
         0xffffff,
-        0.75
+        0.9
     );
 
-    button.setInteractive({
-        useHandCursor: true
-    });
+    button.setDepth(100);
+
+    button.setInteractive(
+        new Phaser.Geom.Circle(
+            radius,
+            radius,
+            radius
+        ),
+        Phaser.Geom.Circle.Contains
+    );
 
     const label = scene.add.text(
         x,
         y,
         symbol,
         {
-            font: "24px Arial",
-            fill: "#ffffff"
+            font: isActionButton
+                ? "bold 12px Arial"
+                : "22px Arial",
+
+            fill: "#ffffff",
+            align: "center"
         }
-    ).setOrigin(0.5);
+    )
+        .setOrigin(0.5)
+        .setDepth(101);
 
-    label.setDepth(button.depth + 1);
+    label.setInteractive({
+        useHandCursor: true
+    });
 
-    const pressButton = () => {
+    const defaultColor =
+        isActionButton
+            ? 0xa72727
+            : 0x17375e;
+
+    const pressedColor =
+        isActionButton
+            ? 0xe04444
+            : 0x2f71b7;
+
+    const pressButton = (
+        pointer,
+        localX,
+        localY,
+        event
+    ) => {
         state.controls[controlName] = true;
 
         button.setFillStyle(
-            0x2f71b7,
-            0.9
+            pressedColor,
+            0.95
         );
+
+        if (
+            event &&
+            event.stopPropagation
+        ) {
+            event.stopPropagation();
+        }
     };
 
     const releaseButton = () => {
         state.controls[controlName] = false;
 
         button.setFillStyle(
-            0x17375e,
-            0.72
+            defaultColor,
+            0.82
         );
     };
 
@@ -869,48 +999,113 @@ function createControlButton(
     button.on("pointerup", releaseButton);
     button.on("pointerout", releaseButton);
     button.on("pointerupoutside", releaseButton);
+
+    label.on("pointerdown", pressButton);
+    label.on("pointerup", releaseButton);
+    label.on("pointerout", releaseButton);
+    label.on("pointerupoutside", releaseButton);
+
+    state.mobileButtons.push({
+        controlName: controlName,
+        button: button,
+        label: label,
+        defaultColor: defaultColor
+    });
+}
+
+function releaseAllMobileControls(scene) {
+    if (
+        !scene ||
+        !scene.gameState
+    ) {
+        return;
+    }
+
+    const state = scene.gameState;
+
+    state.controls.up = false;
+    state.controls.down = false;
+    state.controls.left = false;
+    state.controls.right = false;
+    state.controls.shoot = false;
+
+    for (
+        const mobileButton
+        of state.mobileButtons
+    ) {
+        mobileButton.button.setFillStyle(
+            mobileButton.defaultColor,
+            0.82
+        );
+    }
 }
 
 function updatePlayerInput(scene) {
     const state = scene.gameState;
     const keyboard = state.keyboard;
 
-    const keyboardUp =
-        keyboard.up.isDown ||
-        keyboard.w.isDown;
+    let keyboardUp = false;
+    let keyboardDown = false;
+    let keyboardLeft = false;
+    let keyboardRight = false;
+    let keyboardShoot = false;
 
-    const keyboardDown =
-        keyboard.down.isDown ||
-        keyboard.s.isDown;
+    if (keyboard) {
+        keyboardUp =
+            keyboard.up.isDown ||
+            keyboard.w.isDown;
 
-    const keyboardLeft =
-        keyboard.left.isDown ||
-        keyboard.a.isDown;
+        keyboardDown =
+            keyboard.down.isDown ||
+            keyboard.s.isDown;
 
-    const keyboardRight =
-        keyboard.right.isDown ||
-        keyboard.d.isDown;
+        keyboardLeft =
+            keyboard.left.isDown ||
+            keyboard.a.isDown;
+
+        keyboardRight =
+            keyboard.right.isDown ||
+            keyboard.d.isDown;
+
+        keyboardShoot =
+            keyboard.space.isDown;
+    }
 
     let directionX = 0;
     let directionY = 0;
 
-    if (state.controls.left || keyboardLeft) {
+    if (
+        state.controls.left ||
+        keyboardLeft
+    ) {
         directionX -= 1;
     }
 
-    if (state.controls.right || keyboardRight) {
+    if (
+        state.controls.right ||
+        keyboardRight
+    ) {
         directionX += 1;
     }
 
-    if (state.controls.up || keyboardUp) {
+    if (
+        state.controls.up ||
+        keyboardUp
+    ) {
         directionY -= 1;
     }
 
-    if (state.controls.down || keyboardDown) {
+    if (
+        state.controls.down ||
+        keyboardDown
+    ) {
         directionY += 1;
     }
 
-    if (directionX !== 0 || directionY !== 0) {
+    if (
+        directionX !== 0 ||
+        directionY !== 0
+    ) {
         const length = Math.sqrt(
             directionX * directionX +
             directionY * directionY
@@ -928,19 +1123,28 @@ function updatePlayerInput(scene) {
 
     state.playerVelocityY =
         directionY * state.playerSpeed;
+
+    state.shootPressed =
+        state.controls.shoot ||
+        keyboardShoot;
 }
 
-function updatePlayerMovement(scene, deltaSeconds) {
+function updatePlayerMovement(
+    scene,
+    deltaSeconds
+) {
     const state = scene.gameState;
     const player = state.player;
 
     let nextX =
         player.x +
-        state.playerVelocityX * deltaSeconds;
+        state.playerVelocityX *
+        deltaSeconds;
 
     let nextY =
         player.y +
-        state.playerVelocityY * deltaSeconds;
+        state.playerVelocityY *
+        deltaSeconds;
 
     const correctedPosition =
         clampPointInsideRoundedRink(
@@ -954,15 +1158,20 @@ function updatePlayerMovement(scene, deltaSeconds) {
     player.y = correctedPosition.y;
 }
 
-function updatePuckMovement(scene, deltaSeconds) {
+function updatePuckMovement(
+    scene,
+    deltaSeconds
+) {
     const state = scene.gameState;
     const puck = state.puck;
 
     puck.x +=
-        state.puckVelocityX * deltaSeconds;
+        state.puckVelocityX *
+        deltaSeconds;
 
     puck.y +=
-        state.puckVelocityY * deltaSeconds;
+        state.puckVelocityY *
+        deltaSeconds;
 
     const correctedPosition =
         clampPointInsideRoundedRink(
@@ -991,11 +1200,19 @@ function updatePuckMovement(scene, deltaSeconds) {
     state.puckVelocityX *= frameFriction;
     state.puckVelocityY *= frameFriction;
 
-    if (Math.abs(state.puckVelocityX) < 0.5) {
+    if (
+        Math.abs(
+            state.puckVelocityX
+        ) < 0.5
+    ) {
         state.puckVelocityX = 0;
     }
 
-    if (Math.abs(state.puckVelocityY) < 0.5) {
+    if (
+        Math.abs(
+            state.puckVelocityY
+        ) < 0.5
+    ) {
         state.puckVelocityY = 0;
     }
 }
@@ -1034,7 +1251,8 @@ function handlePlayerPuckContact(scene) {
         normalY = state.facingY;
     }
 
-    const overlap = contactDistance - distance;
+    const overlap =
+        contactDistance - distance;
 
     puck.x += normalX * overlap;
     puck.y += normalY * overlap;
@@ -1059,14 +1277,125 @@ function handlePlayerPuckContact(scene) {
         state.playerVelocityY * 0.45;
 }
 
+function handleShootInput(scene) {
+    const state = scene.gameState;
+
+    if (
+        state.shootPressed &&
+        !state.shootWasPressed
+    ) {
+        shootPuck(scene);
+    }
+
+    state.shootWasPressed =
+        state.shootPressed;
+}
+
+function shootPuck(scene) {
+    const state = scene.gameState;
+
+    const player = state.player;
+    const puck = state.puck;
+
+    const deltaX = puck.x - player.x;
+    const deltaY = puck.y - player.y;
+
+    const distance = Math.sqrt(
+        deltaX * deltaX +
+        deltaY * deltaY
+    );
+
+    const shootingDistance =
+        state.playerRadius +
+        state.puckRadius +
+        24;
+
+    if (
+        distance >
+        shootingDistance
+    ) {
+        return;
+    }
+
+    let shotDirectionX =
+        state.facingX;
+
+    let shotDirectionY =
+        state.facingY;
+
+    if (distance > 0.001) {
+        const puckDirectionX =
+            deltaX / distance;
+
+        const puckDirectionY =
+            deltaY / distance;
+
+        const facingDotPuck =
+            puckDirectionX *
+            state.facingX +
+            puckDirectionY *
+            state.facingY;
+
+        if (facingDotPuck > 0.1) {
+            shotDirectionX =
+                puckDirectionX;
+
+            shotDirectionY =
+                puckDirectionY;
+        }
+    }
+
+    const shotSpeed = 330;
+
+    state.puckVelocityX =
+        shotDirectionX *
+        shotSpeed +
+        state.playerVelocityX *
+        0.25;
+
+    state.puckVelocityY =
+        shotDirectionY *
+        shotSpeed +
+        state.playerVelocityY *
+        0.25;
+
+    puck.x =
+        player.x +
+        shotDirectionX *
+        (
+            state.playerRadius +
+            state.puckRadius +
+            8
+        );
+
+    puck.y =
+        player.y +
+        shotDirectionY *
+        (
+            state.playerRadius +
+            state.puckRadius +
+            8
+        );
+}
+
 function updatePlayerStick(scene) {
     const state = scene.gameState;
 
     const player = state.player;
     const stick = state.playerStick;
 
-    const perpendicularX = -state.facingY;
-    const perpendicularY = state.facingX;
+    if (
+        !player ||
+        !stick
+    ) {
+        return;
+    }
+
+    const perpendicularX =
+        -state.facingY;
+
+    const perpendicularY =
+        state.facingX;
 
     const handX =
         player.x +
@@ -1112,8 +1441,10 @@ function updatePlayerStick(scene) {
     stick.lineBetween(
         bladeX,
         bladeY,
-        bladeX + perpendicularX * 8,
-        bladeY + perpendicularY * 8
+        bladeX +
+        perpendicularX * 8,
+        bladeY +
+        perpendicularY * 8
     );
 }
 
@@ -1124,16 +1455,24 @@ function clampPointInsideRoundedRink(
     rink
 ) {
     const insetLeft =
-        rink.left + objectRadius + 4;
+        rink.left +
+        objectRadius +
+        4;
 
     const insetRight =
-        rink.right - objectRadius - 4;
+        rink.right -
+        objectRadius -
+        4;
 
     const insetTop =
-        rink.top + objectRadius + 4;
+        rink.top +
+        objectRadius +
+        4;
 
     const insetBottom =
-        rink.bottom - objectRadius - 4;
+        rink.bottom -
+        objectRadius -
+        4;
 
     const innerCornerRadius =
         Math.max(
@@ -1143,74 +1482,107 @@ function clampPointInsideRoundedRink(
             1
         );
 
-    let correctedX = Phaser.Math.Clamp(
-        x,
-        insetLeft,
-        insetRight
-    );
+    let correctedX =
+        Phaser.Math.Clamp(
+            x,
+            insetLeft,
+            insetRight
+        );
 
-    let correctedY = Phaser.Math.Clamp(
-        y,
-        insetTop,
-        insetBottom
-    );
+    let correctedY =
+        Phaser.Math.Clamp(
+            y,
+            insetTop,
+            insetBottom
+        );
 
     let hitX = correctedX !== x;
     let hitY = correctedY !== y;
 
-    const cornerCenters = [
-        {
-            x: rink.left + rink.cornerRadius,
-            y: rink.top + rink.cornerRadius
-        },
-        {
-            x: rink.right - rink.cornerRadius,
-            y: rink.top + rink.cornerRadius
-        },
-        {
-            x: rink.left + rink.cornerRadius,
-            y: rink.bottom - rink.cornerRadius
-        },
-        {
-            x: rink.right - rink.cornerRadius,
-            y: rink.bottom - rink.cornerRadius
-        }
-    ];
-
     const isLeftSide =
         correctedX <
-        rink.left + rink.cornerRadius;
+        rink.left +
+        rink.cornerRadius;
 
     const isRightSide =
         correctedX >
-        rink.right - rink.cornerRadius;
+        rink.right -
+        rink.cornerRadius;
 
     const isTopSide =
         correctedY <
-        rink.top + rink.cornerRadius;
+        rink.top +
+        rink.cornerRadius;
 
     const isBottomSide =
         correctedY >
-        rink.bottom - rink.cornerRadius;
+        rink.bottom -
+        rink.cornerRadius;
 
     let cornerCenter = null;
 
-    if (isLeftSide && isTopSide) {
-        cornerCenter = cornerCenters[0];
-    } else if (isRightSide && isTopSide) {
-        cornerCenter = cornerCenters[1];
-    } else if (isLeftSide && isBottomSide) {
-        cornerCenter = cornerCenters[2];
-    } else if (isRightSide && isBottomSide) {
-        cornerCenter = cornerCenters[3];
+    if (
+        isLeftSide &&
+        isTopSide
+    ) {
+        cornerCenter = {
+            x:
+                rink.left +
+                rink.cornerRadius,
+
+            y:
+                rink.top +
+                rink.cornerRadius
+        };
+    } else if (
+        isRightSide &&
+        isTopSide
+    ) {
+        cornerCenter = {
+            x:
+                rink.right -
+                rink.cornerRadius,
+
+            y:
+                rink.top +
+                rink.cornerRadius
+        };
+    } else if (
+        isLeftSide &&
+        isBottomSide
+    ) {
+        cornerCenter = {
+            x:
+                rink.left +
+                rink.cornerRadius,
+
+            y:
+                rink.bottom -
+                rink.cornerRadius
+        };
+    } else if (
+        isRightSide &&
+        isBottomSide
+    ) {
+        cornerCenter = {
+            x:
+                rink.right -
+                rink.cornerRadius,
+
+            y:
+                rink.bottom -
+                rink.cornerRadius
+        };
     }
 
     if (cornerCenter) {
         const deltaX =
-            correctedX - cornerCenter.x;
+            correctedX -
+            cornerCenter.x;
 
         const deltaY =
-            correctedY - cornerCenter.y;
+            correctedY -
+            cornerCenter.y;
 
         const distance = Math.sqrt(
             deltaX * deltaX +
@@ -1219,7 +1591,8 @@ function clampPointInsideRoundedRink(
 
         if (
             distance >
-            innerCornerRadius
+            innerCornerRadius &&
+            distance > 0
         ) {
             const normalX =
                 deltaX / distance;
@@ -1229,19 +1602,27 @@ function clampPointInsideRoundedRink(
 
             const newX =
                 cornerCenter.x +
-                normalX * innerCornerRadius;
+                normalX *
+                innerCornerRadius;
 
             const newY =
                 cornerCenter.y +
-                normalY * innerCornerRadius;
+                normalY *
+                innerCornerRadius;
 
             hitX =
                 hitX ||
-                Math.abs(newX - correctedX) > 0.01;
+                Math.abs(
+                    newX -
+                    correctedX
+                ) > 0.01;
 
             hitY =
                 hitY ||
-                Math.abs(newY - correctedY) > 0.01;
+                Math.abs(
+                    newY -
+                    correctedY
+                ) > 0.01;
 
             correctedX = newX;
             correctedY = newY;

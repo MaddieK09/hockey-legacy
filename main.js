@@ -13,19 +13,24 @@ const config = {
 const game = new Phaser.Game(config);
 
 function create() {
-    const rinkWidth = 330;
-    const rinkHeight = 610;
+    const scene = this;
 
-    const rinkCenterX = this.cameras.main.centerX;
-    const rinkCenterY = this.cameras.main.centerY;
+    const rink = {
+        width: 330,
+        height: 610,
+        cornerRadius: 55
+    };
 
-    const rinkTop = rinkCenterY - rinkHeight / 2;
-    const rinkBottom = rinkCenterY + rinkHeight / 2;
-    const rinkLeft = rinkCenterX - rinkWidth / 2;
-    const rinkRight = rinkCenterX + rinkWidth / 2;
+    rink.centerX = scene.cameras.main.centerX;
+    rink.centerY = scene.cameras.main.centerY;
 
-    const titleText = this.add.text(
-        rinkCenterX,
+    rink.left = rink.centerX - rink.width / 2;
+    rink.right = rink.centerX + rink.width / 2;
+    rink.top = rink.centerY - rink.height / 2;
+    rink.bottom = rink.centerY + rink.height / 2;
+
+    const titleText = scene.add.text(
+        rink.centerX,
         80,
         "HOCKEY LEGACY",
         {
@@ -34,18 +39,18 @@ function create() {
         }
     ).setOrigin(0.5);
 
-    const versionText = this.add.text(
-        rinkCenterX,
+    const versionText = scene.add.text(
+        rink.centerX,
         170,
-        "Version 0.0.34",
+        "Version 0.0.35",
         {
             font: "24px Arial",
             fill: "#ffffff"
         }
     ).setOrigin(0.5);
 
-    const playButton = this.add.text(
-        rinkCenterX,
+    const playButton = scene.add.text(
+        rink.centerX,
         300,
         "▶ PLAY",
         {
@@ -54,373 +59,422 @@ function create() {
         }
     )
         .setOrigin(0.5)
-        .setInteractive();
+        .setInteractive({ useHandCursor: true });
 
     playButton.on("pointerdown", () => {
-        this.cameras.main.setBackgroundColor("#d8f0ff");
+        playButton.disableInteractive();
 
-        playButton.setVisible(false);
         titleText.setVisible(false);
         versionText.setVisible(false);
+        playButton.setVisible(false);
 
-        const rinkGraphics = this.add.graphics();
+        scene.cameras.main.setBackgroundColor("#d8f0ff");
 
-        // Ice surface
-        rinkGraphics.fillStyle(0xf4fbff, 1);
+        drawRink(scene, rink);
+    });
+}
 
-        rinkGraphics.fillRoundedRect(
-            rinkLeft,
-            rinkTop,
-            rinkWidth,
-            rinkHeight,
-            55
+function drawRink(scene, rink) {
+    const graphics = scene.add.graphics();
+
+    drawIceSurface(graphics, rink);
+    drawMainLines(graphics, rink);
+    drawCenterIce(graphics, rink);
+    drawFaceoffCircles(graphics, rink);
+    drawFaceoffDots(graphics, rink);
+    drawGoalsAndCreases(graphics, rink);
+    drawRefereeCrease(graphics, rink);
+}
+
+function drawIceSurface(graphics, rink) {
+    // Ice
+    graphics.fillStyle(0xf4fbff, 1);
+
+    graphics.fillRoundedRect(
+        rink.left,
+        rink.top,
+        rink.width,
+        rink.height,
+        rink.cornerRadius
+    );
+
+    // Boards
+    graphics.lineStyle(4, 0x1d5fa7, 1);
+
+    graphics.strokeRoundedRect(
+        rink.left,
+        rink.top,
+        rink.width,
+        rink.height,
+        rink.cornerRadius
+    );
+}
+
+function drawMainLines(graphics, rink) {
+    const lineLeft = rink.left + 3;
+    const lineRight = rink.right - 3;
+
+    // Center red line
+    graphics.lineStyle(4, 0xff3b30, 1);
+
+    graphics.lineBetween(
+        lineLeft,
+        rink.centerY,
+        lineRight,
+        rink.centerY
+    );
+
+    // Blue lines
+    graphics.lineStyle(4, 0x1d5fa7, 1);
+
+    graphics.lineBetween(
+        lineLeft,
+        rink.centerY - 150,
+        lineRight,
+        rink.centerY - 150
+    );
+
+    graphics.lineBetween(
+        lineLeft,
+        rink.centerY + 150,
+        lineRight,
+        rink.centerY + 150
+    );
+}
+
+function drawCenterIce(graphics, rink) {
+    // Center circle
+    graphics.lineStyle(4, 0x4fc3ff, 1);
+
+    graphics.strokeCircle(
+        rink.centerX,
+        rink.centerY,
+        42
+    );
+
+    // Center faceoff dot
+    graphics.fillStyle(0x4fc3ff, 1);
+
+    graphics.fillCircle(
+        rink.centerX,
+        rink.centerY,
+        4
+    );
+}
+
+function drawFaceoffCircles(graphics, rink) {
+    const circleOffsetX = 85;
+    const circleOffsetY = 225;
+    const circleRadius = 34;
+
+    graphics.lineStyle(3, 0xff3b30, 1);
+
+    graphics.strokeCircle(
+        rink.centerX - circleOffsetX,
+        rink.centerY - circleOffsetY,
+        circleRadius
+    );
+
+    graphics.strokeCircle(
+        rink.centerX + circleOffsetX,
+        rink.centerY - circleOffsetY,
+        circleRadius
+    );
+
+    graphics.strokeCircle(
+        rink.centerX - circleOffsetX,
+        rink.centerY + circleOffsetY,
+        circleRadius
+    );
+
+    graphics.strokeCircle(
+        rink.centerX + circleOffsetX,
+        rink.centerY + circleOffsetY,
+        circleRadius
+    );
+}
+
+function drawFaceoffDots(graphics, rink) {
+    graphics.fillStyle(0xff3b30, 1);
+
+    // Offensive-zone faceoff dots
+    drawFaceoffDot(
+        graphics,
+        rink.centerX - 85,
+        rink.centerY - 225
+    );
+
+    drawFaceoffDot(
+        graphics,
+        rink.centerX + 85,
+        rink.centerY - 225
+    );
+
+    drawFaceoffDot(
+        graphics,
+        rink.centerX - 85,
+        rink.centerY + 225
+    );
+
+    drawFaceoffDot(
+        graphics,
+        rink.centerX + 85,
+        rink.centerY + 225
+    );
+
+    // Neutral-zone faceoff dots
+    drawFaceoffDot(
+        graphics,
+        rink.centerX - 95,
+        rink.centerY - 75
+    );
+
+    drawFaceoffDot(
+        graphics,
+        rink.centerX + 95,
+        rink.centerY - 75
+    );
+
+    drawFaceoffDot(
+        graphics,
+        rink.centerX - 95,
+        rink.centerY + 75
+    );
+
+    drawFaceoffDot(
+        graphics,
+        rink.centerX + 95,
+        rink.centerY + 75
+    );
+}
+
+function drawFaceoffDot(graphics, x, y) {
+    graphics.fillCircle(x, y, 3);
+}
+
+function drawGoalsAndCreases(graphics, rink) {
+    const goalLineInset = 36;
+
+    const topGoalLineY = rink.top + goalLineInset;
+    const bottomGoalLineY = rink.bottom - goalLineInset;
+
+    drawGoalLine(
+        graphics,
+        rink,
+        topGoalLineY
+    );
+
+    drawGoalLine(
+        graphics,
+        rink,
+        bottomGoalLineY
+    );
+
+    drawGoalCrease(
+        graphics,
+        rink.centerX,
+        topGoalLineY,
+        "top"
+    );
+
+    drawGoalCrease(
+        graphics,
+        rink.centerX,
+        bottomGoalLineY,
+        "bottom"
+    );
+
+    drawGoalNet(
+        graphics,
+        rink.centerX,
+        topGoalLineY,
+        "top"
+    );
+
+    drawGoalNet(
+        graphics,
+        rink.centerX,
+        bottomGoalLineY,
+        "bottom"
+    );
+}
+
+function drawGoalLine(graphics, rink, y) {
+    graphics.lineStyle(3, 0xff3b30, 1);
+
+    graphics.lineBetween(
+        rink.left + 3,
+        y,
+        rink.right - 3,
+        y
+    );
+}
+
+function drawGoalCrease(graphics, centerX, goalLineY, side) {
+    const creaseRadius = 40;
+    const creaseDepth = 32;
+
+    graphics.fillStyle(0xbfe9ff, 0.75);
+    graphics.lineStyle(3, 0x4fc3ff, 1);
+
+    graphics.beginPath();
+
+    if (side === "top") {
+        // Straight edge sits on the goal line.
+        graphics.moveTo(
+            centerX - creaseRadius,
+            goalLineY
         );
 
-        // Boards
-        rinkGraphics.lineStyle(4, 0x1d5fa7, 1);
-
-        rinkGraphics.strokeRoundedRect(
-            rinkLeft,
-            rinkTop,
-            rinkWidth,
-            rinkHeight,
-            55
+        graphics.lineTo(
+            centerX + creaseRadius,
+            goalLineY
         );
 
-        // Center red line
-        this.add.rectangle(
-            rinkCenterX,
-            rinkCenterY,
-            rinkWidth,
-            4,
-            0xff0000
-        );
-
-        // Top blue line
-        this.add.rectangle(
-            rinkCenterX,
-            rinkCenterY - 150,
-            rinkWidth,
-            4,
-            0x1d5fa7
-        );
-
-        // Bottom blue line
-        this.add.rectangle(
-            rinkCenterX,
-            rinkCenterY + 150,
-            rinkWidth,
-            4,
-            0x1d5fa7
-        );
-
-        // Center circle
-        rinkGraphics.lineStyle(4, 0x4fc3ff, 1);
-
-        rinkGraphics.strokeCircle(
-            rinkCenterX,
-            rinkCenterY,
-            42
-        );
-
-        // Center faceoff dots
-        rinkGraphics.fillStyle(0x4fc3ff, 1);
-
-        rinkGraphics.fillCircle(
-            rinkCenterX - 95,
-            rinkCenterY,
-            4
-        );
-
-        rinkGraphics.fillCircle(
-            rinkCenterX + 95,
-            rinkCenterY,
-            4
-        );
-
-        // Offensive-zone faceoff circles
-        rinkGraphics.lineStyle(3, 0xff3b30, 1);
-
-        rinkGraphics.strokeCircle(
-            rinkCenterX - 85,
-            rinkCenterY - 225,
-            34
-        );
-
-        rinkGraphics.strokeCircle(
-            rinkCenterX + 85,
-            rinkCenterY - 225,
-            34
-        );
-
-        rinkGraphics.strokeCircle(
-            rinkCenterX - 85,
-            rinkCenterY + 225,
-            34
-        );
-
-        rinkGraphics.strokeCircle(
-            rinkCenterX + 85,
-            rinkCenterY + 225,
-            34
-        );
-
-        // Top goal crease
-        rinkGraphics.fillStyle(0xbfe9ff, 0.75);
-        rinkGraphics.lineStyle(3, 0x4fc3ff, 1);
-
-        rinkGraphics.beginPath();
-
-        rinkGraphics.moveTo(
-            rinkCenterX - 40,
-            rinkTop + 7
-        );
-
-        rinkGraphics.lineTo(
-            rinkCenterX + 40,
-            rinkTop + 7
-        );
-
-        rinkGraphics.arc(
-            rinkCenterX,
-            rinkTop + 7,
-            40,
+        // Curve extends inward toward center ice.
+        graphics.arc(
+            centerX,
+            goalLineY,
+            creaseDepth,
             0,
             Math.PI,
             false
         );
-
-        rinkGraphics.closePath();
-        rinkGraphics.fillPath();
-        rinkGraphics.strokePath();
-
-        // Top red goal line
-        rinkGraphics.lineStyle(3, 0xff3b30, 1);
-
-        rinkGraphics.lineBetween(
-            rinkLeft,
-            rinkTop + 11,
-            rinkRight,
-            rinkTop + 11
+    } else {
+        graphics.moveTo(
+            centerX + creaseRadius,
+            goalLineY
         );
 
-        // Bottom goal crease
-        rinkGraphics.fillStyle(0xbfe9ff, 0.75);
-        rinkGraphics.lineStyle(3, 0x4fc3ff, 1);
-
-        rinkGraphics.beginPath();
-
-        rinkGraphics.moveTo(
-            rinkCenterX + 40,
-            rinkBottom - 7
+        graphics.lineTo(
+            centerX - creaseRadius,
+            goalLineY
         );
 
-        rinkGraphics.lineTo(
-            rinkCenterX - 40,
-            rinkBottom - 7
-        );
-
-        rinkGraphics.arc(
-            rinkCenterX,
-            rinkBottom - 7,
-            40,
+        // Curve extends inward toward center ice.
+        graphics.arc(
+            centerX,
+            goalLineY,
+            creaseDepth,
             Math.PI,
             Math.PI * 2,
             false
         );
+    }
 
-        rinkGraphics.closePath();
-        rinkGraphics.fillPath();
-        rinkGraphics.strokePath();
+    graphics.closePath();
+    graphics.fillPath();
+    graphics.strokePath();
+}
 
-        // Bottom red goal line
-        rinkGraphics.lineStyle(3, 0xff3b30, 1);
+function drawGoalNet(graphics, centerX, goalLineY, side) {
+    const mouthHalfWidth = 18;
+    const backHalfWidth = 14;
+    const netDepth = 20;
 
-        rinkGraphics.lineBetween(
-            rinkLeft,
-            rinkBottom - 11,
-            rinkRight,
-            rinkBottom - 11
-        );
+    let backY;
 
-        // Top goal net
-        rinkGraphics.lineStyle(2, 0x9fb3c8, 0.9);
+    if (side === "top") {
+        backY = goalLineY - netDepth;
+    } else {
+        backY = goalLineY + netDepth;
+    }
 
-        const topNetFrontY = rinkTop + 25;
-        const topNetBackY = rinkTop + 7;
+    // Grey netting
+    graphics.lineStyle(2, 0x9fb3c8, 0.9);
 
-        // Top net outer shape
-        rinkGraphics.lineBetween(
-            rinkCenterX - 18,
-            topNetFrontY,
-            rinkCenterX - 14,
-            topNetBackY
-        );
+    // Outer trapezoid
+    graphics.lineBetween(
+        centerX - mouthHalfWidth,
+        goalLineY,
+        centerX - backHalfWidth,
+        backY
+    );
 
-        rinkGraphics.lineBetween(
-            rinkCenterX - 14,
-            topNetBackY,
-            rinkCenterX + 14,
-            topNetBackY
-        );
+    graphics.lineBetween(
+        centerX - backHalfWidth,
+        backY,
+        centerX + backHalfWidth,
+        backY
+    );
 
-        rinkGraphics.lineBetween(
-            rinkCenterX + 14,
-            topNetBackY,
-            rinkCenterX + 18,
-            topNetFrontY
-        );
+    graphics.lineBetween(
+        centerX + backHalfWidth,
+        backY,
+        centerX + mouthHalfWidth,
+        goalLineY
+    );
 
-        // Top net horizontal mesh
-        rinkGraphics.lineBetween(
-            rinkCenterX - 16,
-            rinkTop + 16,
-            rinkCenterX + 16,
-            rinkTop + 16
-        );
+    // Middle horizontal mesh
+    const middleY = (goalLineY + backY) / 2;
 
-        // Top net vertical mesh
-        rinkGraphics.lineBetween(
-            rinkCenterX - 9,
-            topNetFrontY,
-            rinkCenterX - 7,
-            topNetBackY
-        );
+    graphics.lineBetween(
+        centerX - 16,
+        middleY,
+        centerX + 16,
+        middleY
+    );
 
-        rinkGraphics.lineBetween(
-            rinkCenterX,
-            topNetFrontY,
-            rinkCenterX,
-            topNetBackY
-        );
+    // Vertical mesh
+    graphics.lineBetween(
+        centerX - 9,
+        goalLineY,
+        centerX - 7,
+        backY
+    );
 
-        rinkGraphics.lineBetween(
-            rinkCenterX + 9,
-            topNetFrontY,
-            rinkCenterX + 7,
-            topNetBackY
-        );
+    graphics.lineBetween(
+        centerX,
+        goalLineY,
+        centerX,
+        backY
+    );
 
-        // Top red goal frame
-        rinkGraphics.fillStyle(0xff3b30, 1);
+    graphics.lineBetween(
+        centerX + 9,
+        goalLineY,
+        centerX + 7,
+        backY
+    );
 
-        rinkGraphics.fillRect(
-            rinkCenterX - 18,
-            topNetFrontY - 2,
-            36,
-            4
-        );
+    // Red posts and crossbar
+    graphics.lineStyle(4, 0xff3b30, 1);
 
-        rinkGraphics.fillRect(
-            rinkCenterX - 20,
-            topNetBackY,
-            4,
-            18
-        );
+    graphics.lineBetween(
+        centerX - mouthHalfWidth,
+        goalLineY,
+        centerX + mouthHalfWidth,
+        goalLineY
+    );
 
-        rinkGraphics.fillRect(
-            rinkCenterX + 16,
-            topNetBackY,
-            4,
-            18
-        );
+    graphics.lineBetween(
+        centerX - mouthHalfWidth,
+        goalLineY,
+        centerX - backHalfWidth,
+        backY
+    );
 
-        // Bottom goal net
-        rinkGraphics.lineStyle(2, 0x9fb3c8, 0.9);
+    graphics.lineBetween(
+        centerX + mouthHalfWidth,
+        goalLineY,
+        centerX + backHalfWidth,
+        backY
+    );
+}
 
-        const bottomNetFrontY = rinkBottom - 25;
-        const bottomNetBackY = rinkBottom - 7;
+function drawRefereeCrease(graphics, rink) {
+    graphics.lineStyle(3, 0xff3b30, 1);
 
-        // Bottom net outer shape
-        rinkGraphics.lineBetween(
-            rinkCenterX - 18,
-            bottomNetFrontY,
-            rinkCenterX - 14,
-            bottomNetBackY
-        );
+    graphics.beginPath();
 
-        rinkGraphics.lineBetween(
-            rinkCenterX - 14,
-            bottomNetBackY,
-            rinkCenterX + 14,
-            bottomNetBackY
-        );
+    graphics.arc(
+        rink.right,
+        rink.centerY,
+        28,
+        Phaser.Math.DegToRad(90),
+        Phaser.Math.DegToRad(270),
+        false
+    );
 
-        rinkGraphics.lineBetween(
-            rinkCenterX + 14,
-            bottomNetBackY,
-            rinkCenterX + 18,
-            bottomNetFrontY
-        );
-
-        // Bottom net horizontal mesh
-        rinkGraphics.lineBetween(
-            rinkCenterX - 16,
-            rinkBottom - 16,
-            rinkCenterX + 16,
-            rinkBottom - 16
-        );
-
-        // Bottom net vertical mesh
-        rinkGraphics.lineBetween(
-            rinkCenterX - 9,
-            bottomNetFrontY,
-            rinkCenterX - 7,
-            bottomNetBackY
-        );
-
-        rinkGraphics.lineBetween(
-            rinkCenterX,
-            bottomNetFrontY,
-            rinkCenterX,
-            bottomNetBackY
-        );
-
-        rinkGraphics.lineBetween(
-            rinkCenterX + 9,
-            bottomNetFrontY,
-            rinkCenterX + 7,
-            bottomNetBackY
-        );
-
-        // Bottom red goal frame
-        rinkGraphics.fillStyle(0xff3b30, 1);
-
-        rinkGraphics.fillRect(
-            rinkCenterX - 18,
-            bottomNetFrontY - 2,
-            36,
-            4
-        );
-
-        rinkGraphics.fillRect(
-            rinkCenterX - 20,
-            bottomNetFrontY,
-            4,
-            18
-        );
-
-        rinkGraphics.fillRect(
-            rinkCenterX + 16,
-            bottomNetFrontY,
-            4,
-            18
-        );
-
-        // Right-side center referee crease
-        rinkGraphics.lineStyle(3, 0xff3b30, 1);
-
-        rinkGraphics.beginPath();
-
-        rinkGraphics.arc(
-            rinkRight,
-            rinkCenterY,
-            28,
-            Phaser.Math.DegToRad(90),
-            Phaser.Math.DegToRad(270),
-            false
-        );
-
-        rinkGraphics.strokePath();
-    });
+    graphics.strokePath();
 }

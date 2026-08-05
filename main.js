@@ -84,7 +84,7 @@ function create() {
         possession: {
             owner: null,
 
-            pickupRadius: 17,
+            pickupRadius: 22,
             pickupCooldown: 0,
 
             passTarget: null,
@@ -133,9 +133,7 @@ function create() {
             knob: null,
             label: null,
             guide: null,
-            powerBar: null,
-
-            targetIndicator: null
+            powerBar: null
         }
     };
 
@@ -152,7 +150,7 @@ function create() {
     const versionText = scene.add.text(
         rink.centerX,
         170,
-        "Version 0.0.57",
+        "Version 0.0.58",
         {
             font: "24px Arial",
             fill: "#ffffff"
@@ -266,6 +264,13 @@ function update(time, delta) {
 
     updatePlayerStick(this);
 
+    /*
+     * Possession is resolved after the player,
+     * facing and stick have all updated.
+     *
+     * This makes the puck use the exact current
+     * blade-tip position every frame.
+     */
     updatePossession(
         this,
         deltaSeconds
@@ -278,6 +283,15 @@ function update(time, delta) {
         );
 
         checkForPuckPickup(this);
+    }
+
+    /*
+     * Hard-lock possession one more time at the
+     * very end of the frame. No later operation
+     * can leave the puck behind.
+     */
+    if (state.possession.owner) {
+        hardLockPossessedPuck(this);
     }
 
     updateAimGuide(this);
@@ -1051,9 +1065,7 @@ function createTeammate(
         name,
 
         facingX: 0,
-        facingY: 1,
-
-        holdTimer: 0
+        facingY: 1
     };
 
     state.teammates.push(
@@ -1065,7 +1077,7 @@ function createTeammate(
     );
 }
 
-function getTeammateBladePosition(
+function getTeammateStickGeometry(
     teammate
 ) {
     const perpendicularX =
@@ -1074,42 +1086,61 @@ function getTeammateBladePosition(
     const perpendicularY =
         teammate.facingX;
 
-    return {
-        x:
-            teammate.body.x +
-            teammate.facingX * 23 +
-            perpendicularX * 7,
+    const bladeStartX =
+        teammate.body.x +
+        teammate.facingX * 23 +
+        perpendicularX * 7;
 
-        y:
-            teammate.body.y +
-            teammate.facingY * 23 +
-            perpendicularY * 7
+    const bladeStartY =
+        teammate.body.y +
+        teammate.facingY * 23 +
+        perpendicularY * 7;
+
+    const bladeEndX =
+        bladeStartX +
+        perpendicularX * 8;
+
+    const bladeEndY =
+        bladeStartY +
+        perpendicularY * 8;
+
+    return {
+        bladeStartX,
+        bladeStartY,
+
+        bladeEndX,
+        bladeEndY,
+
+        puckAnchorX:
+            bladeStartX +
+            perpendicularX * 4,
+
+        puckAnchorY:
+            bladeStartY +
+            perpendicularY * 4,
+
+        perpendicularX,
+        perpendicularY
     };
 }
 
 function updateTeammateStick(
     teammate
 ) {
-    const blade =
-        getTeammateBladePosition(
+    const geometry =
+        getTeammateStickGeometry(
             teammate
         );
-
-    const perpendicularX =
-        -teammate.facingY;
-
-    const perpendicularY =
-        teammate.facingX;
 
     const handX =
         teammate.body.x +
         teammate.facingX * 5 +
-        perpendicularX * 5;
+        geometry.perpendicularX * 5;
 
     const handY =
         teammate.body.y +
         teammate.facingY * 5 +
-        perpendicularY * 5;
+        geometry.perpendicularY * 5;
 
     teammate.stick.clear();
 
@@ -1122,8 +1153,8 @@ function updateTeammateStick(
     teammate.stick.lineBetween(
         handX,
         handY,
-        blade.x,
-        blade.y
+        geometry.bladeStartX,
+        geometry.bladeStartY
     );
 
     teammate.stick.lineStyle(
@@ -1133,12 +1164,10 @@ function updateTeammateStick(
     );
 
     teammate.stick.lineBetween(
-        blade.x,
-        blade.y,
-        blade.x +
-            perpendicularX * 7,
-        blade.y +
-            perpendicularY * 7
+        geometry.bladeStartX,
+        geometry.bladeStartY,
+        geometry.bladeEndX,
+        geometry.bladeEndY
     );
 }
 
@@ -1224,65 +1253,61 @@ function updatePossession(
         return;
     }
 
-    if (possession.owner === state.player) {
-        attachPuckToPlayer(scene);
+    hardLockPossessedPuck(scene);
+
+    if (
+        possession.owner !==
+        state.player
+    ) {
+        possession.teammateHoldTimer -=
+            deltaSeconds;
+
+        if (
+            possession.teammateHoldTimer <= 0
+        ) {
+            passFromTeammateToPlayer(
+                scene,
+                possession.owner
+            );
+        }
+    }
+}
+
+function hardLockPossessedPuck(scene) {
+    const state = scene.gameState;
+    const owner = state.possession.owner;
+
+    if (!owner) {
         return;
     }
 
-    const teammate =
-        possession.owner;
+    /*
+     * While owned, the puck has zero independent
+     * movement. Its coordinates are replaced by
+     * the exact blade anchor every frame.
+     */
+    state.puckVelocityX = 0;
+    state.puckVelocityY = 0;
 
-    attachPuckToTeammate(
-        scene,
-        teammate
-    );
+    if (owner === state.player) {
+        const geometry =
+            getPlayerStickGeometry(state);
 
-    possession.teammateHoldTimer -=
-        deltaSeconds;
-
-    if (
-        possession.teammateHoldTimer <= 0
-    ) {
-        passFromTeammateToPlayer(
-            scene,
-            teammate
+        state.puck.setPosition(
+            geometry.puckAnchorX,
+            geometry.puckAnchorY
         );
+
+        return;
     }
-}
 
-function attachPuckToPlayer(scene) {
-    const state = scene.gameState;
-
-    const blade =
-        getStickBladePosition(state);
+    const geometry =
+        getTeammateStickGeometry(owner);
 
     state.puck.setPosition(
-        blade.x,
-        blade.y
+        geometry.puckAnchorX,
+        geometry.puckAnchorY
     );
-
-    state.puckVelocityX = 0;
-    state.puckVelocityY = 0;
-}
-
-function attachPuckToTeammate(
-    scene,
-    teammate
-) {
-    const state = scene.gameState;
-
-    const blade =
-        getTeammateBladePosition(
-            teammate
-        );
-
-    state.puck.setPosition(
-        blade.x,
-        blade.y
-    );
-
-    state.puckVelocityX = 0;
-    state.puckVelocityY = 0;
 }
 
 function checkForPuckPickup(scene) {
@@ -1296,15 +1321,19 @@ function checkForPuckPickup(scene) {
         return;
     }
 
-    const playerBlade =
-        getStickBladePosition(state);
+    const playerGeometry =
+        getPlayerStickGeometry(state);
 
     const playerDistance =
-        Phaser.Math.Distance.Between(
+        distanceFromPointToSegment(
             state.puck.x,
             state.puck.y,
-            playerBlade.x,
-            playerBlade.y
+
+            playerGeometry.bladeStartX,
+            playerGeometry.bladeStartY,
+
+            playerGeometry.bladeEndX,
+            playerGeometry.bladeEndY
         );
 
     if (
@@ -1323,8 +1352,8 @@ function checkForPuckPickup(scene) {
         const teammate =
             possession.passTarget;
 
-        const teammateBlade =
-            getTeammateBladePosition(
+        const geometry =
+            getTeammateStickGeometry(
                 teammate
             );
 
@@ -1332,11 +1361,11 @@ function checkForPuckPickup(scene) {
             Phaser.Math.Distance.Between(
                 state.puck.x,
                 state.puck.y,
-                teammateBlade.x,
-                teammateBlade.y
+                geometry.puckAnchorX,
+                geometry.puckAnchorY
             );
 
-        if (teammateDistance <= 18) {
+        if (teammateDistance <= 20) {
             givePuckToTeammate(
                 scene,
                 teammate
@@ -1348,7 +1377,15 @@ function checkForPuckPickup(scene) {
         possession.passTargetType ===
         "player"
     ) {
-        if (playerDistance <= 18) {
+        const distanceToAnchor =
+            Phaser.Math.Distance.Between(
+                state.puck.x,
+                state.puck.y,
+                playerGeometry.puckAnchorX,
+                playerGeometry.puckAnchorY
+            );
+
+        if (distanceToAnchor <= 20) {
             givePuckToPlayer(scene);
         }
     }
@@ -1366,7 +1403,7 @@ function givePuckToPlayer(scene) {
     state.puckVelocityX = 0;
     state.puckVelocityY = 0;
 
-    attachPuckToPlayer(scene);
+    hardLockPossessedPuck(scene);
 }
 
 function givePuckToTeammate(
@@ -1387,15 +1424,12 @@ function givePuckToTeammate(
     state.puckVelocityX = 0;
     state.puckVelocityY = 0;
 
-    attachPuckToTeammate(
-        scene,
-        teammate
-    );
+    hardLockPossessedPuck(scene);
 }
 
 function releasePossession(
     state,
-    cooldown = 0.16
+    cooldown = 0.18
 ) {
     state.possession.owner = null;
 
@@ -1409,21 +1443,21 @@ function passFromTeammateToPlayer(
 ) {
     const state = scene.gameState;
 
-    const teammateBlade =
-        getTeammateBladePosition(
+    const teammateGeometry =
+        getTeammateStickGeometry(
             teammate
         );
 
-    const playerBlade =
-        getStickBladePosition(state);
+    const playerGeometry =
+        getPlayerStickGeometry(state);
 
     const deltaX =
-        playerBlade.x -
-        teammateBlade.x;
+        playerGeometry.puckAnchorX -
+        teammateGeometry.puckAnchorX;
 
     const deltaY =
-        playerBlade.y -
-        teammateBlade.y;
+        playerGeometry.puckAnchorY -
+        teammateGeometry.puckAnchorY;
 
     const distance = Math.sqrt(
         deltaX * deltaX +
@@ -1444,9 +1478,11 @@ function passFromTeammateToPlayer(
     teammate.facingX = directionX;
     teammate.facingY = directionY;
 
+    updateTeammateStick(teammate);
+
     releasePossession(
         state,
-        0.18
+        0.16
     );
 
     state.possession.passTarget =
@@ -1456,8 +1492,8 @@ function passFromTeammateToPlayer(
         "player";
 
     state.puck.setPosition(
-        teammateBlade.x,
-        teammateBlade.y
+        teammateGeometry.puckAnchorX,
+        teammateGeometry.puckAnchorY
     );
 
     state.puckVelocityX =
@@ -1638,10 +1674,6 @@ function createAimJoystick(
     aim.powerBar =
         scene.add.graphics()
             .setDepth(104);
-
-    aim.targetIndicator =
-        scene.add.graphics()
-            .setDepth(23);
 
     const hitArea = scene.add.circle(
         x,
@@ -1984,10 +2016,12 @@ function updateAimFromPointer(
             aim.centerY
         );
 
-        aim.label.setPosition(
-            aim.centerX,
-            aim.centerY
-        );
+        aim.label
+            .setPosition(
+                aim.centerX,
+                aim.centerY
+            )
+            .setText("SHOT");
 
         return;
     }
@@ -2066,8 +2100,8 @@ function finishAimPointer(
     pointer,
     shouldShoot
 ) {
-    const state = scene.gameState;
-    const aim = state.aim;
+    const aim =
+        scene.gameState.aim;
 
     if (
         !aim.active ||
@@ -2125,10 +2159,6 @@ function resetAimJoystick(scene) {
 
     if (aim.powerBar) {
         aim.powerBar.clear();
-    }
-
-    if (aim.targetIndicator) {
-        aim.targetIndicator.clear();
     }
 }
 
@@ -2192,10 +2222,6 @@ function createKeyboardControls(scene) {
                 d:
                     Phaser.Input.Keyboard
                         .KeyCodes.D,
-
-                shift:
-                    Phaser.Input.Keyboard
-                        .KeyCodes.SHIFT,
 
                 space:
                     Phaser.Input.Keyboard
@@ -2465,26 +2491,55 @@ function updatePlayerMovement(
    PLAYER STICK
 ========================================================= */
 
-function getStickBladePosition(state) {
+function getPlayerStickGeometry(state) {
     const perpendicularX =
         -state.facingY;
 
     const perpendicularY =
         state.facingX;
 
+    const bladeStartX =
+        state.player.x +
+        state.facingX * 25 +
+        perpendicularX * 8;
+
+    const bladeStartY =
+        state.player.y +
+        state.facingY * 25 +
+        perpendicularY * 8;
+
+    const bladeEndX =
+        bladeStartX +
+        perpendicularX * 9;
+
+    const bladeEndY =
+        bladeStartY +
+        perpendicularY * 9;
+
+    /*
+     * The puck anchor is directly on the blade,
+     * halfway along its visible black section.
+     */
+    const puckAnchorX =
+        bladeStartX +
+        perpendicularX * 4.5;
+
+    const puckAnchorY =
+        bladeStartY +
+        perpendicularY * 4.5;
+
     return {
-        x:
-            state.player.x +
-            state.facingX * 25 +
-            perpendicularX * 8,
-
-        y:
-            state.player.y +
-            state.facingY * 25 +
-            perpendicularY * 8,
-
         perpendicularX,
-        perpendicularY
+        perpendicularY,
+
+        bladeStartX,
+        bladeStartY,
+
+        bladeEndX,
+        bladeEndY,
+
+        puckAnchorX,
+        puckAnchorY
     };
 }
 
@@ -2498,18 +2553,18 @@ function updatePlayerStick(scene) {
         return;
     }
 
-    const blade =
-        getStickBladePosition(state);
+    const geometry =
+        getPlayerStickGeometry(state);
 
     const handX =
         state.player.x +
         state.facingX * 6 +
-        blade.perpendicularX * 6;
+        geometry.perpendicularX * 6;
 
     const handY =
         state.player.y +
         state.facingY * 6 +
-        blade.perpendicularY * 6;
+        geometry.perpendicularY * 6;
 
     state.playerStick.clear();
 
@@ -2522,8 +2577,8 @@ function updatePlayerStick(scene) {
     state.playerStick.lineBetween(
         handX,
         handY,
-        blade.x,
-        blade.y
+        geometry.bladeStartX,
+        geometry.bladeStartY
     );
 
     state.playerStick.lineStyle(
@@ -2533,17 +2588,15 @@ function updatePlayerStick(scene) {
     );
 
     state.playerStick.lineBetween(
-        blade.x,
-        blade.y,
-        blade.x +
-            blade.perpendicularX * 8,
-        blade.y +
-            blade.perpendicularY * 8
+        geometry.bladeStartX,
+        geometry.bladeStartY,
+        geometry.bladeEndX,
+        geometry.bladeEndY
     );
 }
 
 /* =========================================================
-   AIMING, SHOOTING AND PASSING
+   SHOOTING AND PASSING
 ========================================================= */
 
 function findPassTarget(
@@ -2558,8 +2611,8 @@ function findPassTarget(
         return null;
     }
 
-    const blade =
-        getStickBladePosition(state);
+    const playerGeometry =
+        getPlayerStickGeometry(state);
 
     const minimumDot =
         Math.cos(
@@ -2573,18 +2626,18 @@ function findPassTarget(
         const teammate
         of state.teammates
     ) {
-        const teammateBlade =
-            getTeammateBladePosition(
+        const teammateGeometry =
+            getTeammateStickGeometry(
                 teammate
             );
 
         const deltaX =
-            teammateBlade.x -
-            blade.x;
+            teammateGeometry.puckAnchorX -
+            playerGeometry.puckAnchorX;
 
         const deltaY =
-            teammateBlade.y -
-            blade.y;
+            teammateGeometry.puckAnchorY -
+            playerGeometry.puckAnchorY;
 
         const distance = Math.sqrt(
             deltaX * deltaX +
@@ -2670,19 +2723,21 @@ function passPuckToTeammate(
         return;
     }
 
-    const puckStart =
-        getStickBladePosition(state);
+    const playerGeometry =
+        getPlayerStickGeometry(state);
 
-    const target =
-        getTeammateBladePosition(
+    const targetGeometry =
+        getTeammateStickGeometry(
             teammate
         );
 
     const deltaX =
-        target.x - puckStart.x;
+        targetGeometry.puckAnchorX -
+        playerGeometry.puckAnchorX;
 
     const deltaY =
-        target.y - puckStart.y;
+        targetGeometry.puckAnchorY -
+        playerGeometry.puckAnchorY;
 
     const distance = Math.sqrt(
         deltaX * deltaX +
@@ -2715,8 +2770,8 @@ function passPuckToTeammate(
         "teammate";
 
     state.puck.setPosition(
-        puckStart.x,
-        puckStart.y
+        playerGeometry.puckAnchorX,
+        playerGeometry.puckAnchorY
     );
 
     state.puckVelocityX =
@@ -2753,8 +2808,8 @@ function shootPuckInDirection(
     directionX /= directionLength;
     directionY /= directionLength;
 
-    const blade =
-        getStickBladePosition(state);
+    const geometry =
+        getPlayerStickGeometry(state);
 
     releasePossession(
         state,
@@ -2765,8 +2820,8 @@ function shootPuckInDirection(
     state.possession.passTargetType = null;
 
     state.puck.setPosition(
-        blade.x,
-        blade.y
+        geometry.puckAnchorX,
+        geometry.puckAnchorY
     );
 
     state.puckVelocityX =
@@ -2800,8 +2855,8 @@ function updateAimGuide(scene) {
         return;
     }
 
-    const blade =
-        getStickBladePosition(state);
+    const geometry =
+        getPlayerStickGeometry(state);
 
     const passTarget =
         findPassTarget(
@@ -2829,12 +2884,12 @@ function updateAimGuide(scene) {
         aim.strength * 105;
 
     const endX =
-        blade.x +
+        geometry.puckAnchorX +
         aim.directionX *
         guideLength;
 
     const endY =
-        blade.y +
+        geometry.puckAnchorY +
         aim.directionY *
         guideLength;
 
@@ -2846,8 +2901,8 @@ function updateAimGuide(scene) {
     );
 
     aim.guide.lineBetween(
-        blade.x,
-        blade.y,
+        geometry.puckAnchorX,
+        geometry.puckAnchorY,
         endX,
         endY
     );
@@ -2990,6 +3045,7 @@ function updatePuckMovement(
         checkForPuckPickup(scene);
 
         if (state.possession.owner) {
+            hardLockPossessedPuck(scene);
             break;
         }
     }
@@ -3135,6 +3191,10 @@ function handleGoalNetCollisions(scene) {
     const state = scene.gameState;
     const puck = state.puck;
 
+    /*
+     * A possessed puck belongs to the blade.
+     * Net physics cannot detach or reposition it.
+     */
     if (state.possession.owner) {
         return;
     }
@@ -3225,6 +3285,32 @@ function closestPointOnSegment(
 
         t
     };
+}
+
+function distanceFromPointToSegment(
+    pointX,
+    pointY,
+    x1,
+    y1,
+    x2,
+    y2
+) {
+    const closest =
+        closestPointOnSegment(
+            pointX,
+            pointY,
+            x1,
+            y1,
+            x2,
+            y2
+        );
+
+    return Phaser.Math.Distance.Between(
+        pointX,
+        pointY,
+        closest.x,
+        closest.y
+    );
 }
 
 function resolvePuckSegmentCollision(

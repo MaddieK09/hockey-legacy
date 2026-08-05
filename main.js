@@ -1,12 +1,8 @@
 const config = {
     type: Phaser.AUTO,
-
     parent: "game",
-
     width: window.innerWidth,
-
     height: window.innerHeight,
-
     backgroundColor: "#0d7a2b",
 
     scene: {
@@ -17,16 +13,19 @@ const config = {
 const game = new Phaser.Game(config);
 
 function create() {
-const rinkWidth = 330;
-const rinkHeight = 610;
-const rinkCenterX = this.cameras.main.centerX;
-const rinkCenterY = this.cameras.main.centerY;
-const rinkTop = rinkCenterY - (rinkHeight / 2);
-const rinkBottom = rinkCenterY + (rinkHeight / 2);
-const rinkLeft = rinkCenterX - (rinkWidth / 2);
-const rinkRight = rinkCenterX + (rinkWidth / 2);
-const titleText = this.add.text(
-        this.cameras.main.centerX,
+    const rinkWidth = 330;
+    const rinkHeight = 610;
+
+    const rinkCenterX = this.cameras.main.centerX;
+    const rinkCenterY = this.cameras.main.centerY;
+
+    const rinkTop = rinkCenterY - rinkHeight / 2;
+    const rinkBottom = rinkCenterY + rinkHeight / 2;
+    const rinkLeft = rinkCenterX - rinkWidth / 2;
+    const rinkRight = rinkCenterX + rinkWidth / 2;
+
+    const titleText = this.add.text(
+        rinkCenterX,
         80,
         "HOCKEY LEGACY",
         {
@@ -35,351 +34,393 @@ const titleText = this.add.text(
         }
     ).setOrigin(0.5);
 
-const versionText = this.add.text(
-        this.cameras.main.centerX,
+    const versionText = this.add.text(
+        rinkCenterX,
         170,
-        "Version 0.0.1",
+        "Version 0.0.34",
         {
             font: "24px Arial",
             fill: "#ffffff"
         }
     ).setOrigin(0.5);
-const playButton = this.add.text(
-    this.cameras.main.centerX,
-    300,
-    "▶ PLAY",
-    {
-        font: "36px Arial",
-        fill: "#ffff00"
-    }
-).setOrigin(0.5).setInteractive();
-playButton.on("pointerdown", () => {
 
-    this.cameras.main.setBackgroundColor("#d8f0ff");
+    const playButton = this.add.text(
+        rinkCenterX,
+        300,
+        "▶ PLAY",
+        {
+            font: "36px Arial",
+            fill: "#ffff00"
+        }
+    )
+        .setOrigin(0.5)
+        .setInteractive();
 
-    playButton.setVisible(false);
-titleText.setVisible(false);
-versionText.setVisible(false);
-const rinkGraphics = this.add.graphics();
+    playButton.on("pointerdown", () => {
+        this.cameras.main.setBackgroundColor("#d8f0ff");
 
-rinkGraphics.fillStyle(0xf4fbff, 1);
-rinkGraphics.fillRoundedRect(
-    this.cameras.main.centerX - 165,
-    this.cameras.main.centerY - 305,
-    330,
-    610,
-    55
-);
+        playButton.setVisible(false);
+        titleText.setVisible(false);
+        versionText.setVisible(false);
 
-rinkGraphics.lineStyle(4, 0x1d5fa7, 1);
-rinkGraphics.strokeRoundedRect(
-    this.cameras.main.centerX - 165,
-    this.cameras.main.centerY - 305,
-    330,
-    610,
-    55
-);
-this.add.rectangle(
-    this.cameras.main.centerX,
-    this.cameras.main.centerY,
-    330,
-    4,
-    0xff0000
-    );
-    this.add.rectangle(
-    this.cameras.main.centerX,
-    this.cameras.main.centerY - 150,
-    330,
-    4,
-    0x1d5fa7
-);
-this.add.rectangle(
-    this.cameras.main.centerX,
-    this.cameras.main.centerY + 150,
-    330,
-    4,
-    0x1d5fa7
-);
-rinkGraphics.lineStyle(4, 0x4fc3ff, 1);
+        const rinkGraphics = this.add.graphics();
 
-rinkGraphics.strokeCircle(
-    this.cameras.main.centerX,
-    this.cameras.main.centerY,
-    42
-);
-rinkGraphics.fillStyle(0x4fc3ff, 1);
+        // Ice surface
+        rinkGraphics.fillStyle(0xf4fbff, 1);
 
-rinkGraphics.fillCircle(
-    this.cameras.main.centerX - 95,
-    this.cameras.main.centerY,
-    4
-);
+        rinkGraphics.fillRoundedRect(
+            rinkLeft,
+            rinkTop,
+            rinkWidth,
+            rinkHeight,
+            55
+        );
 
-rinkGraphics.fillCircle(
-    this.cameras.main.centerX + 95,
-    this.cameras.main.centerY,
-    4
-);
-rinkGraphics.lineStyle(3, 0xff3b30, 1);
+        // Boards
+        rinkGraphics.lineStyle(4, 0x1d5fa7, 1);
 
-rinkGraphics.strokeCircle(
-    this.cameras.main.centerX - 85,
-    this.cameras.main.centerY - 225,
-    34
-);
+        rinkGraphics.strokeRoundedRect(
+            rinkLeft,
+            rinkTop,
+            rinkWidth,
+            rinkHeight,
+            55
+        );
 
-rinkGraphics.strokeCircle(
-    this.cameras.main.centerX + 85,
-    this.cameras.main.centerY - 225,
-    34
-);
+        // Center red line
+        this.add.rectangle(
+            rinkCenterX,
+            rinkCenterY,
+            rinkWidth,
+            4,
+            0xff0000
+        );
 
-rinkGraphics.strokeCircle(
-    this.cameras.main.centerX - 85,
-    this.cameras.main.centerY + 225,
-    34
-);
+        // Top blue line
+        this.add.rectangle(
+            rinkCenterX,
+            rinkCenterY - 150,
+            rinkWidth,
+            4,
+            0x1d5fa7
+        );
 
-rinkGraphics.strokeCircle(
-    this.cameras.main.centerX + 85,
-    this.cameras.main.centerY + 225,
-    34
-);
-// Top goal crease
-rinkGraphics.fillStyle(0xbfe9ff, 0.75);
-rinkGraphics.lineStyle(3, 0x4fc3ff, 1);
+        // Bottom blue line
+        this.add.rectangle(
+            rinkCenterX,
+            rinkCenterY + 150,
+            rinkWidth,
+            4,
+            0x1d5fa7
+        );
 
-rinkGraphics.beginPath();
+        // Center circle
+        rinkGraphics.lineStyle(4, 0x4fc3ff, 1);
 
-rinkGraphics.moveTo(
-    this.cameras.main.centerX - 40,
-this.cameras.main.centerY - 298
-);
+        rinkGraphics.strokeCircle(
+            rinkCenterX,
+            rinkCenterY,
+            42
+        );
 
-rinkGraphics.lineTo(
-    this.cameras.main.centerX + 40,
-this.cameras.main.centerY - 298
-);
+        // Center faceoff dots
+        rinkGraphics.fillStyle(0x4fc3ff, 1);
 
-rinkGraphics.arc(
-    this.cameras.main.centerX,
-this.cameras.main.centerY - 298,
-    40,
-    0,
-    Math.PI,
-    false
-);
+        rinkGraphics.fillCircle(
+            rinkCenterX - 95,
+            rinkCenterY,
+            4
+        );
 
-rinkGraphics.closePath();
-rinkGraphics.fillPath();
-rinkGraphics.strokePath();
-rinkGraphics.lineStyle(3, 0xff3b30, 1);
+        rinkGraphics.fillCircle(
+            rinkCenterX + 95,
+            rinkCenterY,
+            4
+        );
 
-rinkGraphics.lineBetween(
-    this.cameras.main.centerX - 165,
-rinkTop + 11,
-    this.cameras.main.centerX + 165,
-rinkTop + 11
-);
+        // Offensive-zone faceoff circles
+        rinkGraphics.lineStyle(3, 0xff3b30, 1);
 
-// Bottom goal crease
-rinkGraphics.beginPath();
+        rinkGraphics.strokeCircle(
+            rinkCenterX - 85,
+            rinkCenterY - 225,
+            34
+        );
 
-rinkGraphics.moveTo(
-    this.cameras.main.centerX + 40,
-rinkBottom - 11
-);
+        rinkGraphics.strokeCircle(
+            rinkCenterX + 85,
+            rinkCenterY - 225,
+            34
+        );
 
-rinkGraphics.lineTo(
-    this.cameras.main.centerX - 40,
-rinkBottom - 11
-);
+        rinkGraphics.strokeCircle(
+            rinkCenterX - 85,
+            rinkCenterY + 225,
+            34
+        );
 
-rinkGraphics.arc(
-    this.cameras.main.centerX,
-rinkBottom - 12,
-    40,
-0,
-    Math.PI,
-    false
-);
+        rinkGraphics.strokeCircle(
+            rinkCenterX + 85,
+            rinkCenterY + 225,
+            34
+        );
 
-rinkGraphics.closePath();
-rinkGraphics.fillPath();
-rinkGraphics.strokePath();
-// Top goal net — bird's-eye trapezoid
-rinkGraphics.lineStyle(2, 0x9fb3c8, 0.9);
+        // Top goal crease
+        rinkGraphics.fillStyle(0xbfe9ff, 0.75);
+        rinkGraphics.lineStyle(3, 0x4fc3ff, 1);
 
-// Outer net shape
-rinkGraphics.lineBetween(
-    this.cameras.main.centerX - 18,
-    this.cameras.main.centerY - 280,
-    this.cameras.main.centerX - 14,
-    this.cameras.main.centerY - 298
-);
+        rinkGraphics.beginPath();
 
-rinkGraphics.lineBetween(
-    this.cameras.main.centerX - 14,
-    this.cameras.main.centerY - 298,
-    this.cameras.main.centerX + 14,
-    this.cameras.main.centerY - 298
-);
+        rinkGraphics.moveTo(
+            rinkCenterX - 40,
+            rinkTop + 7
+        );
 
-rinkGraphics.lineBetween(
-    this.cameras.main.centerX + 14,
-    this.cameras.main.centerY - 298,
-    this.cameras.main.centerX + 18,
-    this.cameras.main.centerY - 280
-);
+        rinkGraphics.lineTo(
+            rinkCenterX + 40,
+            rinkTop + 7
+        );
 
-// Horizontal mesh
-rinkGraphics.lineBetween(
-    this.cameras.main.centerX - 16,
-    this.cameras.main.centerY - 289,
-    this.cameras.main.centerX + 16,
-    this.cameras.main.centerY - 289
-);
+        rinkGraphics.arc(
+            rinkCenterX,
+            rinkTop + 7,
+            40,
+            0,
+            Math.PI,
+            false
+        );
 
-// Vertical mesh
-rinkGraphics.lineBetween(
-    this.cameras.main.centerX - 9,
-    this.cameras.main.centerY - 280,
-    this.cameras.main.centerX - 7,
-    this.cameras.main.centerY - 298
-);
+        rinkGraphics.closePath();
+        rinkGraphics.fillPath();
+        rinkGraphics.strokePath();
 
-rinkGraphics.lineBetween(
-    this.cameras.main.centerX,
-    this.cameras.main.centerY - 280,
-    this.cameras.main.centerX,
-    this.cameras.main.centerY - 298
-);
+        // Top red goal line
+        rinkGraphics.lineStyle(3, 0xff3b30, 1);
 
-rinkGraphics.lineBetween(
-    this.cameras.main.centerX + 9,
-    this.cameras.main.centerY - 280,
-    this.cameras.main.centerX + 7,
-    this.cameras.main.centerY - 298
-);
+        rinkGraphics.lineBetween(
+            rinkLeft,
+            rinkTop + 11,
+            rinkRight,
+            rinkTop + 11
+        );
 
-// Top red goal frame
-rinkGraphics.fillStyle(0xff3b30, 1);
+        // Bottom goal crease
+        rinkGraphics.fillStyle(0xbfe9ff, 0.75);
+        rinkGraphics.lineStyle(3, 0x4fc3ff, 1);
 
-rinkGraphics.fillRect(
-    this.cameras.main.centerX - 18,
-    this.cameras.main.centerY - 282,
-    36,
-    4
-);
+        rinkGraphics.beginPath();
 
-rinkGraphics.fillRect(
-    this.cameras.main.centerX - 20,
-    this.cameras.main.centerY - 294,
-    4,
-    14
-);
+        rinkGraphics.moveTo(
+            rinkCenterX + 40,
+            rinkBottom - 7
+        );
 
-rinkGraphics.fillRect(
-    this.cameras.main.centerX + 16,
-    this.cameras.main.centerY - 294,
-    4,
-    14
-);
+        rinkGraphics.lineTo(
+            rinkCenterX - 40,
+            rinkBottom - 7
+        );
 
+        rinkGraphics.arc(
+            rinkCenterX,
+            rinkBottom - 7,
+            40,
+            Math.PI,
+            Math.PI * 2,
+            false
+        );
 
-// Bottom goal net — bird's-eye trapezoid
-rinkGraphics.lineStyle(2, 0x9fb3c8, 0.9);
+        rinkGraphics.closePath();
+        rinkGraphics.fillPath();
+        rinkGraphics.strokePath();
 
-// Outer net shape
-rinkGraphics.lineBetween(
-    this.cameras.main.centerX - 18,
-    this.cameras.main.centerY + 280,
-    this.cameras.main.centerX - 14,
-    this.cameras.main.centerY + 298
-);
+        // Bottom red goal line
+        rinkGraphics.lineStyle(3, 0xff3b30, 1);
 
-rinkGraphics.lineBetween(
-    this.cameras.main.centerX - 14,
-    this.cameras.main.centerY + 298,
-    this.cameras.main.centerX + 14,
-    this.cameras.main.centerY + 298
-);
+        rinkGraphics.lineBetween(
+            rinkLeft,
+            rinkBottom - 11,
+            rinkRight,
+            rinkBottom - 11
+        );
 
-rinkGraphics.lineBetween(
-    this.cameras.main.centerX + 14,
-    this.cameras.main.centerY + 298,
-    this.cameras.main.centerX + 18,
-    this.cameras.main.centerY + 280
-);
+        // Top goal net
+        rinkGraphics.lineStyle(2, 0x9fb3c8, 0.9);
 
-// Horizontal mesh
-rinkGraphics.lineBetween(
-    this.cameras.main.centerX - 16,
-    this.cameras.main.centerY + 289,
-    this.cameras.main.centerX + 16,
-    this.cameras.main.centerY + 289
-);
+        const topNetFrontY = rinkTop + 25;
+        const topNetBackY = rinkTop + 7;
 
-// Vertical mesh
-rinkGraphics.lineBetween(
-    this.cameras.main.centerX - 9,
-    this.cameras.main.centerY + 280,
-    this.cameras.main.centerX - 7,
-    this.cameras.main.centerY + 298
-);
+        // Top net outer shape
+        rinkGraphics.lineBetween(
+            rinkCenterX - 18,
+            topNetFrontY,
+            rinkCenterX - 14,
+            topNetBackY
+        );
 
-rinkGraphics.lineBetween(
-    this.cameras.main.centerX,
-    this.cameras.main.centerY + 280,
-    this.cameras.main.centerX,
-    this.cameras.main.centerY + 298
-);
+        rinkGraphics.lineBetween(
+            rinkCenterX - 14,
+            topNetBackY,
+            rinkCenterX + 14,
+            topNetBackY
+        );
 
-rinkGraphics.lineBetween(
-    this.cameras.main.centerX + 9,
-    this.cameras.main.centerY + 280,
-    this.cameras.main.centerX + 7,
-    this.cameras.main.centerY + 298
-);
+        rinkGraphics.lineBetween(
+            rinkCenterX + 14,
+            topNetBackY,
+            rinkCenterX + 18,
+            topNetFrontY
+        );
 
-// Bottom red goal frame
-rinkGraphics.lineStyle(4, 0xff3b30, 1);
+        // Top net horizontal mesh
+        rinkGraphics.lineBetween(
+            rinkCenterX - 16,
+            rinkTop + 16,
+            rinkCenterX + 16,
+            rinkTop + 16
+        );
 
-rinkGraphics.lineBetween(
-    this.cameras.main.centerX - 18,
-    this.cameras.main.centerY + 280,
-    this.cameras.main.centerX + 18,
-    this.cameras.main.centerY + 280
-);
+        // Top net vertical mesh
+        rinkGraphics.lineBetween(
+            rinkCenterX - 9,
+            topNetFrontY,
+            rinkCenterX - 7,
+            topNetBackY
+        );
 
-rinkGraphics.lineBetween(
-    this.cameras.main.centerX - 18,
-    this.cameras.main.centerY + 280,
-    this.cameras.main.centerX - 18,
-this.cameras.main.centerY + 294
-);
+        rinkGraphics.lineBetween(
+            rinkCenterX,
+            topNetFrontY,
+            rinkCenterX,
+            topNetBackY
+        );
 
-rinkGraphics.lineBetween(
-    this.cameras.main.centerX + 18,
-    this.cameras.main.centerY + 280,
-    this.cameras.main.centerX + 18,
-this.cameras.main.centerY + 294
-);
-rinkGraphics.lineStyle(3, 0xff3b30, 1);
+        rinkGraphics.lineBetween(
+            rinkCenterX + 9,
+            topNetFrontY,
+            rinkCenterX + 7,
+            topNetBackY
+        );
 
-rinkGraphics.beginPath();
+        // Top red goal frame
+        rinkGraphics.fillStyle(0xff3b30, 1);
 
-rinkGraphics.arc(
-this.cameras.main.centerX + 165,
-    this.cameras.main.centerY,
-    28,
-Phaser.Math.DegToRad(90),
-Phaser.Math.DegToRad(270),
-    false
-);
+        rinkGraphics.fillRect(
+            rinkCenterX - 18,
+            topNetFrontY - 2,
+            36,
+            4
+        );
 
-rinkGraphics.strokePath();
-});
+        rinkGraphics.fillRect(
+            rinkCenterX - 20,
+            topNetBackY,
+            4,
+            18
+        );
 
+        rinkGraphics.fillRect(
+            rinkCenterX + 16,
+            topNetBackY,
+            4,
+            18
+        );
 
+        // Bottom goal net
+        rinkGraphics.lineStyle(2, 0x9fb3c8, 0.9);
+
+        const bottomNetFrontY = rinkBottom - 25;
+        const bottomNetBackY = rinkBottom - 7;
+
+        // Bottom net outer shape
+        rinkGraphics.lineBetween(
+            rinkCenterX - 18,
+            bottomNetFrontY,
+            rinkCenterX - 14,
+            bottomNetBackY
+        );
+
+        rinkGraphics.lineBetween(
+            rinkCenterX - 14,
+            bottomNetBackY,
+            rinkCenterX + 14,
+            bottomNetBackY
+        );
+
+        rinkGraphics.lineBetween(
+            rinkCenterX + 14,
+            bottomNetBackY,
+            rinkCenterX + 18,
+            bottomNetFrontY
+        );
+
+        // Bottom net horizontal mesh
+        rinkGraphics.lineBetween(
+            rinkCenterX - 16,
+            rinkBottom - 16,
+            rinkCenterX + 16,
+            rinkBottom - 16
+        );
+
+        // Bottom net vertical mesh
+        rinkGraphics.lineBetween(
+            rinkCenterX - 9,
+            bottomNetFrontY,
+            rinkCenterX - 7,
+            bottomNetBackY
+        );
+
+        rinkGraphics.lineBetween(
+            rinkCenterX,
+            bottomNetFrontY,
+            rinkCenterX,
+            bottomNetBackY
+        );
+
+        rinkGraphics.lineBetween(
+            rinkCenterX + 9,
+            bottomNetFrontY,
+            rinkCenterX + 7,
+            bottomNetBackY
+        );
+
+        // Bottom red goal frame
+        rinkGraphics.fillStyle(0xff3b30, 1);
+
+        rinkGraphics.fillRect(
+            rinkCenterX - 18,
+            bottomNetFrontY - 2,
+            36,
+            4
+        );
+
+        rinkGraphics.fillRect(
+            rinkCenterX - 20,
+            bottomNetFrontY,
+            4,
+            18
+        );
+
+        rinkGraphics.fillRect(
+            rinkCenterX + 16,
+            bottomNetFrontY,
+            4,
+            18
+        );
+
+        // Right-side center referee crease
+        rinkGraphics.lineStyle(3, 0xff3b30, 1);
+
+        rinkGraphics.beginPath();
+
+        rinkGraphics.arc(
+            rinkRight,
+            rinkCenterY,
+            28,
+            Phaser.Math.DegToRad(90),
+            Phaser.Math.DegToRad(270),
+            false
+        );
+
+        rinkGraphics.strokePath();
+    });
 }

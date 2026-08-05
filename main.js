@@ -1,8 +1,10 @@
 const config = {
     type: Phaser.AUTO,
     parent: "game",
+
     width: window.innerWidth,
     height: window.innerHeight,
+
     backgroundColor: "#0d7a2b",
 
     input: {
@@ -15,7 +17,9 @@ const config = {
     }
 };
 
-const game = new Phaser.Game(config);
+const game = new Phaser.Game(
+    config
+);
 
 /* =========================================================
    CREATE
@@ -108,6 +112,8 @@ function create() {
         score: {
             top: 0,
             bottom: 0,
+
+            panel: null,
             text: null
         },
 
@@ -191,6 +197,7 @@ function create() {
             base: null,
             knob: null,
             label: null,
+
             guide: null,
             powerBar: null
         }
@@ -202,8 +209,11 @@ function create() {
             80,
             "HOCKEY LEGACY",
             {
-                font: "40px Arial",
-                fill: "#ffffff"
+                font:
+                    "40px Arial",
+
+                fill:
+                    "#ffffff"
             }
         )
             .setOrigin(0.5);
@@ -212,10 +222,13 @@ function create() {
         scene.add.text(
             rink.centerX,
             170,
-            "Version 0.0.63",
+            "Version 0.0.64",
             {
-                font: "24px Arial",
-                fill: "#ffffff"
+                font:
+                    "24px Arial",
+
+                fill:
+                    "#ffffff"
             }
         )
             .setOrigin(0.5);
@@ -226,8 +239,11 @@ function create() {
             300,
             "▶ PLAY",
             {
-                font: "36px Arial",
-                fill: "#ffff00"
+                font:
+                    "36px Arial",
+
+                fill:
+                    "#ffff00"
             }
         )
             .setOrigin(0.5)
@@ -241,15 +257,23 @@ function create() {
             const state =
                 scene.gameState;
 
-            if (state.gameStarted) {
+            if (
+                state.gameStarted
+            ) {
                 return;
             }
 
-            playButton.disableInteractive();
+            playButton
+                .disableInteractive();
 
-            titleText.setVisible(false);
-            versionText.setVisible(false);
-            playButton.setVisible(false);
+            titleText
+                .setVisible(false);
+
+            versionText
+                .setVisible(false);
+
+            playButton
+                .setVisible(false);
 
             scene.cameras.main
                 .setBackgroundColor(
@@ -295,6 +319,10 @@ function create() {
 
             state.gameStarted = true;
 
+            /*
+             * For now, the controlled player begins
+             * every new play with possession.
+             */
             resetPlayersForCenterFaceoff(
                 scene,
                 false
@@ -450,7 +478,9 @@ function update(time, delta) {
         deltaSeconds
     );
 
-    if (!state.possession.owner) {
+    if (
+        !state.possession.owner
+    ) {
         updatePuckMovement(
             this,
             deltaSeconds
@@ -487,7 +517,6 @@ function update(time, delta) {
         this
     );
 }
-
 /* =========================================================
    SCOREBOARD
 ========================================================= */
@@ -496,38 +525,59 @@ function createScoreboard(scene) {
     const state =
         scene.gameState;
 
+    const rink =
+        state.rink;
+
+    /*
+     * Keep the scoreboard above the rink so it
+     * does not cover the goal, crease, or puck.
+     */
+    const scoreboardY =
+        Math.max(
+            30,
+            rink.top - 32
+        );
+
+    state.score.panel =
+        scene.add.rectangle(
+            rink.centerX,
+            scoreboardY,
+            118,
+            34,
+            0x17375e,
+            0.96
+        )
+            .setStrokeStyle(
+                2,
+                0xffffff,
+                0.9
+            )
+            .setDepth(150);
+
     state.score.text =
         scene.add.text(
-            state.rink.centerX,
-            state.rink.top + 17,
+            rink.centerX,
+            scoreboardY,
             "0  -  0",
             {
                 font:
                     "bold 18px Arial",
 
                 fill:
-                    "#ffffff",
-
-                backgroundColor:
-                    "#17375e",
-
-                padding: {
-                    left: 12,
-                    right: 12,
-                    top: 5,
-                    bottom: 5
-                }
+                    "#ffffff"
             }
         )
             .setOrigin(0.5)
-            .setDepth(150);
+            .setDepth(151);
 }
 
 function updateScoreboard(scene) {
     const state =
         scene.gameState;
 
-    if (!state.score.text) {
+    if (
+        !state.score.text
+    ) {
         return;
     }
 
@@ -633,7 +683,7 @@ function createGoalPresentation(scene) {
         scene.add.text(
             rink.centerX,
             rink.centerY + 25,
-            "Faceoff at center ice",
+            "Resetting play...",
             {
                 font:
                     "bold 16px Arial",
@@ -656,6 +706,10 @@ function createGoalPresentation(scene) {
             .setDepth(200)
             .setVisible(false);
 }
+
+/* =========================================================
+   GOAL DETECTION
+========================================================= */
 
 function checkForGoal(
     scene,
@@ -686,7 +740,9 @@ function checkForGoal(
         currentY <=
             geometry.topLineY;
 
-    if (crossedTopLine) {
+    if (
+        crossedTopLine
+    ) {
         const crossingX =
             getLineCrossingX(
                 previousX,
@@ -717,7 +773,9 @@ function checkForGoal(
         currentY >=
             geometry.bottomLineY;
 
-    if (crossedBottomLine) {
+    if (
+        crossedBottomLine
+    ) {
         const crossingX =
             getLineCrossingX(
                 previousX,
@@ -757,8 +815,9 @@ function getLineCrossingX(
         previousY;
 
     if (
-        Math.abs(verticalTravel) <
-        0.0001
+        Math.abs(
+            verticalTravel
+        ) < 0.0001
     ) {
         return currentX;
     }
@@ -790,6 +849,10 @@ function isCrossingInsideGoalMouth(
             state
         );
 
+    /*
+     * The entire puck must pass between the
+     * inside edges of both goal posts.
+     */
     const innerLeft =
         state.rink.centerX -
         geometry.mouthHalfWidth +
@@ -805,6 +868,10 @@ function isCrossingInsideGoalMouth(
         crossingX <= innerRight
     );
 }
+
+/* =========================================================
+   REGISTER GOAL
+========================================================= */
 
 function registerGoal(
     scene,
@@ -826,15 +893,23 @@ function registerGoal(
     state.playStopped = true;
 
     presentation.active = true;
+
     presentation.scoredSide =
         scoredSide;
 
     state.possession.owner = null;
-    state.possession.passTarget = null;
-    state.possession.passTargetType = null;
-    state.possession.pickupCooldown = 999;
+
+    state.possession.passTarget =
+        null;
+
+    state.possession.passTargetType =
+        null;
+
+    state.possession.pickupCooldown =
+        999;
 
     state.passCall.active = false;
+
     state.passCall.displayTimer = 0;
 
     state.puckVelocityX = 0;
@@ -901,6 +976,10 @@ function registerGoal(
         );
 }
 
+/* =========================================================
+   SHOW GOAL PRESENTATION
+========================================================= */
+
 function showGoalPresentation(
     scene,
     scoredSide
@@ -935,6 +1014,7 @@ function showGoalPresentation(
             "Back.Out",
 
         yoyo: true,
+
         hold: 600
     });
 
@@ -995,7 +1075,9 @@ function showGoalPresentation(
         },
 
         duration: 170,
+
         yoyo: true,
+
         repeat: 5
     });
 
@@ -1007,6 +1089,10 @@ function showGoalPresentation(
         false
     );
 }
+
+/* =========================================================
+   RESET AFTER GOAL
+========================================================= */
 
 function resetAfterGoal(scene) {
     const state =
@@ -1072,17 +1158,37 @@ function resetAfterGoal(scene) {
         .setVisible(false)
         .setAlpha(1);
 
+    /*
+     * Move everyone back first while play is
+     * still stopped.
+     */
     resetPlayersForCenterFaceoff(
         scene,
         true
     );
 
     presentation.active = false;
-    presentation.scoredSide = null;
-    presentation.resetTimer = null;
+
+    presentation.scoredSide =
+        null;
+
+    presentation.resetTimer =
+        null;
 
     state.playStopped = false;
+
+    /*
+     * Player receives possession immediately
+     * after the stoppage finishes.
+     */
+    givePuckToPlayer(
+        scene
+    );
 }
+
+/* =========================================================
+   FREEZE DURING GOAL
+========================================================= */
 
 function freezeGameplayDuringGoal(
     scene
@@ -1127,14 +1233,17 @@ function resetPlayersForCenterFaceoff(
     const rink =
         state.rink;
 
-    state.possession.owner = null;
-    state.possession.passTarget = null;
-    state.possession.passTargetType = null;
+    state.possession.owner =
+        null;
+
+    state.possession.passTarget =
+        null;
+
+    state.possession.passTargetType =
+        null;
 
     state.possession.pickupCooldown =
-        afterGoal
-            ? 0.7
-            : 0.35;
+        0;
 
     state.passCall.active = false;
     state.passCall.cooldown = 0;
@@ -1216,11 +1325,6 @@ function resetPlayersForCenterFaceoff(
         );
     }
 
-    state.puck.setPosition(
-        rink.centerX,
-        rink.centerY
-    );
-
     state.puckVelocityX = 0;
     state.puckVelocityY = 0;
 
@@ -1242,11 +1346,39 @@ function resetPlayersForCenterFaceoff(
         scene
     );
 
+    /*
+     * Place the puck directly on the controlled
+     * player's stick instead of at the faceoff dot.
+     */
+    const playerGeometry =
+        getPlayerStickGeometry(
+            state
+        );
+
+    state.puck.setPosition(
+        playerGeometry.puckAnchorX,
+        playerGeometry.puckAnchorY
+    );
+
+    /*
+     * On the initial start, play is already active,
+     * so possession can be assigned immediately.
+     *
+     * After a goal, resetAfterGoal assigns it once
+     * the stopped-play flag has been removed.
+     */
+    if (
+        !afterGoal
+    ) {
+        givePuckToPlayer(
+            scene
+        );
+    }
+
     updatePassCallVisuals(
         scene
     );
 }
-
 /* =========================================================
    RINK DRAWING
 ========================================================= */
@@ -2148,7 +2280,6 @@ function createTeammate(
         teammate
     );
 }
-
 /* =========================================================
    TEAMMATE AI
 ========================================================= */
@@ -3057,7 +3188,6 @@ function updateTeammateStick(
         geometry.bladeEndY
     );
 }
-
 /* =========================================================
    PUCK
 ========================================================= */
@@ -3357,6 +3487,9 @@ function givePuckToPlayer(
     state.passCall.active = false;
     state.passCall.displayTimer = 0;
 
+    state.puckVelocityX = 0;
+    state.puckVelocityY = 0;
+
     hardLockPossessedPuck(
         scene
     );
@@ -3383,6 +3516,9 @@ function givePuckToTeammate(
 
     state.possession.passTargetType =
         null;
+
+    state.puckVelocityX = 0;
+    state.puckVelocityY = 0;
 
     teammate.possessionTime = 0;
 
@@ -3847,7 +3983,6 @@ function flashPassCallUnavailable(
         }
     );
 }
-
 /* =========================================================
    AI SHOOTING AND PASSING
 ========================================================= */
@@ -4960,7 +5095,6 @@ function updatePuckMovement(
         state.puckVelocityY = 0;
     }
 }
-
 /* =========================================================
    AIM GUIDE
 ========================================================= */
@@ -5916,7 +6050,6 @@ function cancelJoysticks(
         scene
     );
 }
-
 /* =========================================================
    KEYBOARD
 ========================================================= */
@@ -6610,54 +6743,6 @@ function resolvePuckCircleCollision(
 
     return true;
 }
-
-/* =========================================================
-   ROUNDED RINK COLLISION
-========================================================= */
-
-function clampPointInsideRoundedRink(
-    x,
-    y,
-    objectRadius,
-    rink
-) {
-    const padding = 4;
-
-    const insetLeft =
-        rink.left +
-        objectRadius +
-        padding;
-
-    const insetRight =
-        rink.right -
-        objectRadius -
-        padding;
-
-    const insetTop =
-        rink.top +
-        objectRadius +
-        padding;
-
-    const insetBottom =
-        rink.bottom -
-        objectRadius -
-        padding;
-
-    const innerCornerRadius =
-        Math.max(
-            rink.cornerRadius -
-            objectRadius -
-            padding,
-            1
-        );
-
-    let correctedX =
-        Phaser.Math.Clamp(
-            x,
-            insetLeft,
-            insetRight
-        );
-
     let correctedY =
         Phaser.Math.Clamp(
             y,

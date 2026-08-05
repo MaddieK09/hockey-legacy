@@ -1,11 +1,14 @@
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.0.67
+   VERSION 0.0.68
+
+   SHOOT/PASS FIX:
+   - Strong aim pull = always shoot.
+   - Short aim pull directly at teammate = pass.
 ========================================================= */
 
 const config = {
     type: Phaser.AUTO,
-
     parent: "game",
 
     width: window.innerWidth,
@@ -47,7 +50,8 @@ const config = {
     }
 };
 
-const game = new Phaser.Game(config);
+const game =
+    new Phaser.Game(config);
 
 /* =========================================================
    CREATE
@@ -253,6 +257,18 @@ function create() {
             knobRadius: 18,
             maximumDistance: 55,
 
+            /*
+             * A pass can only occur below this strength.
+             * Pull farther than this to guarantee a shot.
+             */
+            maximumPassStrength: 0.6,
+
+            /*
+             * Smaller angle means you must aim more
+             * precisely at the teammate to pass.
+             */
+            passAimConeDegrees: 10,
+
             base: null,
             knob: null,
             label: null,
@@ -390,7 +406,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.0.67",
+            "Version 0.0.68",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -2001,12 +2017,16 @@ function createPlayer(scene) {
         scene.add.triangle(
             state.player.x,
             state.player.y - 21,
+
             0,
             8,
+
             8,
             8,
+
             4,
             0,
+
             0xffdf38,
             1
         )
@@ -3426,6 +3446,10 @@ function shootFromTeammate(
             directionY * directionY
         );
 
+    if (length < 0.001) {
+        return;
+    }
+
     directionX /= length;
     directionY /= length;
 
@@ -3526,6 +3550,10 @@ function passFromTeammate(
             directionX * directionX +
             directionY * directionY
         );
+
+    if (distance < 0.001) {
+        return;
+    }
 
     directionX /= distance;
     directionY /= distance;
@@ -3849,11 +3877,24 @@ function updatePassCallVisuals(scene) {
 function findPassTarget(
     state,
     directionX,
-    directionY
+    directionY,
+    aimStrength
 ) {
     if (
         state.possession.owner !==
         state.player
+    ) {
+        return null;
+    }
+
+    /*
+     * This is the important fix:
+     * strong pulls are shots, so do not even search
+     * for a pass target above the pass threshold.
+     */
+    if (
+        aimStrength >
+        state.aim.maximumPassStrength
     ) {
         return null;
     }
@@ -3866,7 +3907,8 @@ function findPassTarget(
     const minimumDot =
         Math.cos(
             Phaser.Math.DegToRad(
-                18
+                state.aim
+                    .passAimConeDegrees
             )
         );
 
@@ -3896,11 +3938,24 @@ function findPassTarget(
                 deltaY * deltaY
             );
 
+        if (
+            distance < 20 ||
+            distance > 270
+        ) {
+            continue;
+        }
+
+        const targetDirectionX =
+            deltaX / distance;
+
+        const targetDirectionY =
+            deltaY / distance;
+
         const dot =
             directionX *
-                deltaX / distance +
+                targetDirectionX +
             directionY *
-                deltaY / distance;
+                targetDirectionY;
 
         if (dot > bestDot) {
             bestDot = dot;
@@ -3922,11 +3977,37 @@ function useShotControl(scene) {
         return;
     }
 
+    /*
+     * Strong pull always shoots.
+     */
+    if (
+        state.aim.strength >
+        state.aim.maximumPassStrength
+    ) {
+        const shotSpeed =
+            80 +
+            state.aim.strength * 420;
+
+        shootPuckInDirection(
+            scene,
+            state.aim.directionX,
+            state.aim.directionY,
+            shotSpeed
+        );
+
+        return;
+    }
+
+    /*
+     * A shorter pull may pass, but only when
+     * aimed directly at a teammate.
+     */
     const target =
         findPassTarget(
             state,
             state.aim.directionX,
-            state.aim.directionY
+            state.aim.directionY,
+            state.aim.strength
         );
 
     if (target) {
@@ -3939,13 +4020,18 @@ function useShotControl(scene) {
         return;
     }
 
+    /*
+     * No valid teammate target means it still shoots.
+     */
+    const shotSpeed =
+        110 +
+        state.aim.strength * 390;
+
     shootPuckInDirection(
         scene,
         state.aim.directionX,
         state.aim.directionY,
-        80 +
-            state.aim.strength *
-            420
+        shotSpeed
     );
 }
 
@@ -3956,6 +4042,13 @@ function passPuckToTeammate(
 ) {
     const state =
         scene.gameState;
+
+    if (
+        state.possession.owner !==
+        state.player
+    ) {
+        return;
+    }
 
     const start =
         getPlayerStickGeometry(
@@ -3981,6 +4074,10 @@ function passPuckToTeammate(
             directionY * directionY
         );
 
+    if (distance < 0.001) {
+        return;
+    }
+
     directionX /= distance;
     directionY /= distance;
 
@@ -4001,8 +4098,8 @@ function passPuckToTeammate(
     );
 
     const speed =
-        220 +
-        strength * 160;
+        225 +
+        strength * 145;
 
     state.puckVelocityX =
         directionX * speed;
@@ -4352,6 +4449,22 @@ function updatePuckMovement(
 
     state.puckVelocityY *=
         friction;
+
+    if (
+        Math.abs(
+            state.puckVelocityX
+        ) < 0.4
+    ) {
+        state.puckVelocityX = 0;
+    }
+
+    if (
+        Math.abs(
+            state.puckVelocityY
+        ) < 0.4
+    ) {
+        state.puckVelocityY = 0;
+    }
 }
 
 function checkForGoal(
@@ -4500,6 +4613,13 @@ function updateAimGuide(scene) {
     const aim =
         state.aim;
 
+    if (
+        !aim.guide ||
+        !aim.powerBar
+    ) {
+        return;
+    }
+
     aim.guide.clear();
     aim.powerBar.clear();
 
@@ -4519,7 +4639,8 @@ function updateAimGuide(scene) {
         findPassTarget(
             state,
             aim.directionX,
-            aim.directionY
+            aim.directionY,
+            aim.strength
         );
 
     let color;
@@ -4530,8 +4651,14 @@ function updateAimGuide(scene) {
     ) {
         color = 0xff3b30;
     } else if (target) {
+        /*
+         * Blue means a pass will happen.
+         */
         color = 0x28e7ff;
     } else {
+        /*
+         * Yellow means the release will shoot.
+         */
         color = 0xffd21f;
     }
 
@@ -4561,6 +4688,32 @@ function updateAimGuide(scene) {
         geometry.puckAnchorY,
         endX,
         endY
+    );
+
+    aim.guide.fillStyle(
+        color,
+        0.95
+    );
+
+    aim.guide.fillTriangle(
+        endX,
+        endY,
+
+        endX -
+            aim.directionX * 11 -
+            aim.directionY * 6,
+
+        endY -
+            aim.directionY * 11 +
+            aim.directionX * 6,
+
+        endX -
+            aim.directionX * 11 +
+            aim.directionY * 6,
+
+        endY -
+            aim.directionY * 11 -
+            aim.directionX * 6
     );
 
     const barWidth = 76;
@@ -4606,7 +4759,8 @@ function updateTeammateIndicators(
             ? findPassTarget(
                 state,
                 state.aim.directionX,
-                state.aim.directionY
+                state.aim.directionY,
+                state.aim.strength
             )
             : null;
 
@@ -5122,6 +5276,9 @@ function setJoystickDirection(
             deltaY * deltaY
         );
 
+    joystick.distance =
+        distance;
+
     if (distance < 4) {
         joystick.directionX = 0;
         joystick.directionY = 0;
@@ -5272,7 +5429,10 @@ function resetAimJoystick(scene) {
 }
 
 function cancelJoysticks(scene) {
-    if (!scene.gameState) {
+    if (
+        !scene ||
+        !scene.gameState
+    ) {
         return;
     }
 
@@ -5407,6 +5567,9 @@ function updateKeyboardInput(scene) {
             keyboard.space
         )
     ) {
+        /*
+         * Space always shoots. It never passes.
+         */
         shootPuckInDirection(
             scene,
             state.facingX,
@@ -5767,7 +5930,10 @@ function clampPointInsideRoundedRink(
                 deltaY * deltaY
             );
 
-        if (distance > radius) {
+        if (
+            distance > radius &&
+            distance > 0
+        ) {
             correctedX =
                 cornerX +
                 deltaX / distance *

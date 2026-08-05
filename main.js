@@ -10,8 +10,8 @@ const config = {
     },
 
     scene: {
-        create: create,
-        update: update
+        create,
+        update
     }
 };
 
@@ -51,17 +51,26 @@ function create() {
         puckVelocityX: 0,
         puckVelocityY: 0,
 
-        playerMaximumSpeed: 155,
-        playerAcceleration: 700,
-        playerDeceleration: 850,
+        normalMaximumSpeed: 150,
+        sprintMaximumSpeed: 225,
+
+        playerAcceleration: 650,
+        sprintAcceleration: 525,
+        playerDeceleration: 820,
+
+        sprinting: false,
+        sprintButton: null,
+        sprintLabel: null,
 
         puckFriction: 0.985,
 
         facingAngle: -Math.PI / 2,
         targetFacingAngle: -Math.PI / 2,
+
         facingX: 0,
         facingY: -1,
-        turnSpeed: 9,
+
+        turnSpeed: 8,
 
         keyboard: null,
 
@@ -122,7 +131,7 @@ function create() {
     const versionText = scene.add.text(
         rink.centerX,
         170,
-        "Version 0.0.53",
+        "Version 0.0.54",
         {
             font: "24px Arial",
             fill: "#ffffff"
@@ -173,11 +182,13 @@ function create() {
     scene.input.on("pointerup", pointer => {
         finishMovementPointer(scene, pointer);
         finishAimPointer(scene, pointer, true);
+        releaseSprintPointer(scene, pointer);
     });
 
     scene.input.on("pointerupoutside", pointer => {
         finishMovementPointer(scene, pointer);
         finishAimPointer(scene, pointer, true);
+        releaseSprintPointer(scene, pointer);
     });
 
     scene.input.on("gameout", () => {
@@ -942,7 +953,7 @@ function createPuck(scene) {
 }
 
 /* =========================================================
-   MOBILE JOYSTICKS
+   MOBILE CONTROLS
 ========================================================= */
 
 function createMobileControls(scene) {
@@ -954,16 +965,25 @@ function createMobileControls(scene) {
         scene.scale.height - 185
     );
 
+    const movementX = rink.left + 70;
+    const aimX = rink.right - 70;
+
     createMovementJoystick(
         scene,
-        rink.left + 70,
+        movementX,
         controlsY
     );
 
     createAimJoystick(
         scene,
-        rink.right - 70,
+        aimX,
         controlsY
+    );
+
+    createSprintButton(
+        scene,
+        movementX,
+        controlsY - 72
     );
 }
 
@@ -1029,28 +1049,26 @@ function createMovementJoystick(
         Phaser.Geom.Circle.Contains
     );
 
-    const startMovement = pointer => {
-        if (movement.active) {
-            return;
-        }
-
-        movement.active = true;
-        movement.pointerId = pointer.id;
-
-        movement.base.setFillStyle(
-            0x234f7f,
-            0.84
-        );
-
-        updateMovementFromPointer(
-            scene,
-            pointer
-        );
-    };
-
     hitArea.on(
         "pointerdown",
-        startMovement
+        pointer => {
+            if (movement.active) {
+                return;
+            }
+
+            movement.active = true;
+            movement.pointerId = pointer.id;
+
+            movement.base.setFillStyle(
+                0x234f7f,
+                0.84
+            );
+
+            updateMovementFromPointer(
+                scene,
+                pointer
+            );
+        }
     );
 }
 
@@ -1130,30 +1148,156 @@ function createAimJoystick(
         Phaser.Geom.Circle.Contains
     );
 
-    const startAim = pointer => {
-        if (aim.active) {
-            return;
+    hitArea.on(
+        "pointerdown",
+        pointer => {
+            if (aim.active) {
+                return;
+            }
+
+            aim.active = true;
+            aim.pointerId = pointer.id;
+
+            aim.base.setFillStyle(
+                0xb62b2b,
+                0.9
+            );
+
+            updateAimFromPointer(
+                scene,
+                pointer
+            );
         }
+    );
+}
 
-        aim.active = true;
-        aim.pointerId = pointer.id;
+function createSprintButton(
+    scene,
+    x,
+    y
+) {
+    const state = scene.gameState;
 
-        aim.base.setFillStyle(
-            0xb62b2b,
-            0.9
-        );
+    const button = scene.add.circle(
+        x,
+        y,
+        27,
+        0x1769d2,
+        0.85
+    );
 
-        updateAimFromPointer(
-            scene,
-            pointer
-        );
+    button.setStrokeStyle(
+        2,
+        0xffffff,
+        0.9
+    );
+
+    button.setDepth(105);
+
+    const label = scene.add.text(
+        x,
+        y,
+        "SPRINT",
+        {
+            font: "bold 9px Arial",
+            fill: "#ffffff"
+        }
+    )
+        .setOrigin(0.5)
+        .setDepth(106);
+
+    const hitArea = scene.add.circle(
+        x,
+        y,
+        34,
+        0xffffff,
+        0.001
+    );
+
+    hitArea.setDepth(107);
+
+    hitArea.setInteractive(
+        new Phaser.Geom.Circle(
+            34,
+            34,
+            34
+        ),
+        Phaser.Geom.Circle.Contains
+    );
+
+    state.sprintButton = {
+        button,
+        label,
+        hitArea,
+        pointerId: null
     };
 
     hitArea.on(
         "pointerdown",
-        startAim
+        pointer => {
+            if (
+                state.sprintButton.pointerId !==
+                null
+            ) {
+                return;
+            }
+
+            state.sprintButton.pointerId =
+                pointer.id;
+
+            state.sprinting = true;
+
+            button.setFillStyle(
+                0x4ba3ff,
+                0.98
+            );
+
+            button.setScale(1.08);
+            label.setScale(1.08);
+        }
     );
 }
+
+function releaseSprintPointer(
+    scene,
+    pointer
+) {
+    const state = scene.gameState;
+
+    if (
+        !state.sprintButton ||
+        state.sprintButton.pointerId !==
+            pointer.id
+    ) {
+        return;
+    }
+
+    resetSprintButton(scene);
+}
+
+function resetSprintButton(scene) {
+    const state = scene.gameState;
+
+    state.sprinting = false;
+
+    if (!state.sprintButton) {
+        return;
+    }
+
+    state.sprintButton.pointerId = null;
+
+    state.sprintButton.button.setFillStyle(
+        0x1769d2,
+        0.85
+    );
+
+    state.sprintButton.button.setScale(1);
+    state.sprintButton.label.setScale(1);
+}
+
+/* =========================================================
+   JOYSTICK POINTERS
+========================================================= */
 
 function updateMovementPointer(
     scene,
@@ -1164,8 +1308,7 @@ function updateMovementPointer(
 
     if (
         !movement.active ||
-        movement.pointerId !==
-        pointer.id
+        movement.pointerId !== pointer.id
     ) {
         return;
     }
@@ -1221,16 +1364,13 @@ function updateMovementFromPointer(
         movement.maximumDistance
     );
 
-    movement.directionX =
-        directionX;
-
-    movement.directionY =
-        directionY;
+    movement.directionX = directionX;
+    movement.directionY = directionY;
 
     movement.strength =
         Phaser.Math.Clamp(
             clampedDistance /
-            movement.maximumDistance,
+                movement.maximumDistance,
             0,
             1
         );
@@ -1255,8 +1395,7 @@ function finishMovementPointer(
 
     if (
         !movement.active ||
-        movement.pointerId !==
-        pointer.id
+        movement.pointerId !== pointer.id
     ) {
         return;
     }
@@ -1274,6 +1413,10 @@ function resetMovementJoystick(scene) {
     movement.directionX = 0;
     movement.directionY = 0;
     movement.strength = 0;
+
+    if (!movement.knob || !movement.base) {
+        return;
+    }
 
     movement.knob.x =
         movement.centerX;
@@ -1361,7 +1504,7 @@ function updateAimFromPointer(
     aim.strength =
         Phaser.Math.Clamp(
             clampedDistance /
-            aim.maximumDistance,
+                aim.maximumDistance,
             0,
             1
         );
@@ -1419,6 +1562,14 @@ function resetAimJoystick(scene) {
     aim.distance = 0;
     aim.strength = 0;
 
+    if (
+        !aim.knob ||
+        !aim.label ||
+        !aim.base
+    ) {
+        return;
+    }
+
     aim.knob.x = aim.centerX;
     aim.knob.y = aim.centerY;
 
@@ -1430,7 +1581,9 @@ function resetAimJoystick(scene) {
         0.74
     );
 
-    aim.guide.clear();
+    if (aim.guide) {
+        aim.guide.clear();
+    }
 }
 
 function cancelAllControls(scene) {
@@ -1443,6 +1596,7 @@ function cancelAllControls(scene) {
 
     resetMovementJoystick(scene);
     resetAimJoystick(scene);
+    resetSprintButton(scene);
 }
 
 /* =========================================================
@@ -1459,21 +1613,57 @@ function createKeyboardControls(scene) {
         return;
     }
 
-    state.keyboard =
-        scene.input.keyboard.addKeys({
-            up: Phaser.Input.Keyboard.KeyCodes.UP,
-            down: Phaser.Input.Keyboard.KeyCodes.DOWN,
-            left: Phaser.Input.Keyboard.KeyCodes.LEFT,
-            right: Phaser.Input.Keyboard.KeyCodes.RIGHT,
+    try {
+        state.keyboard =
+            scene.input.keyboard.addKeys({
+                up:
+                    Phaser.Input.Keyboard
+                        .KeyCodes.UP,
 
-            w: Phaser.Input.Keyboard.KeyCodes.W,
-            s: Phaser.Input.Keyboard.KeyCodes.S,
-            a: Phaser.Input.Keyboard.KeyCodes.A,
-            d: Phaser.Input.Keyboard.KeyCodes.D,
+                down:
+                    Phaser.Input.Keyboard
+                        .KeyCodes.DOWN,
 
-            space:
-                Phaser.Input.Keyboard.KeyCodes.SPACE
-        });
+                left:
+                    Phaser.Input.Keyboard
+                        .KeyCodes.LEFT,
+
+                right:
+                    Phaser.Input.Keyboard
+                        .KeyCodes.RIGHT,
+
+                w:
+                    Phaser.Input.Keyboard
+                        .KeyCodes.W,
+
+                s:
+                    Phaser.Input.Keyboard
+                        .KeyCodes.S,
+
+                a:
+                    Phaser.Input.Keyboard
+                        .KeyCodes.A,
+
+                d:
+                    Phaser.Input.Keyboard
+                        .KeyCodes.D,
+
+                shift:
+                    Phaser.Input.Keyboard
+                        .KeyCodes.SHIFT,
+
+                space:
+                    Phaser.Input.Keyboard
+                        .KeyCodes.SPACE
+            });
+    } catch (error) {
+        console.warn(
+            "Keyboard controls unavailable:",
+            error
+        );
+
+        state.keyboard = null;
+    }
 }
 
 function updateKeyboardInput(scene) {
@@ -1546,6 +1736,14 @@ function updateKeyboardInput(scene) {
     }
 
     if (
+        state.sprintButton?.pointerId ===
+        null
+    ) {
+        state.sprinting =
+            keyboard.shift.isDown;
+    }
+
+    if (
         Phaser.Input.Keyboard.JustDown(
             keyboard.space
         )
@@ -1560,7 +1758,7 @@ function updateKeyboardInput(scene) {
 }
 
 /* =========================================================
-   SMOOTH PLAYER MOVEMENT
+   PLAYER MOVEMENT
 ========================================================= */
 
 function updatePlayerVelocity(
@@ -1570,14 +1768,24 @@ function updatePlayerVelocity(
     const state = scene.gameState;
     const movement = state.movement;
 
+    const maximumSpeed =
+        state.sprinting
+            ? state.sprintMaximumSpeed
+            : state.normalMaximumSpeed;
+
+    const acceleration =
+        state.sprinting
+            ? state.sprintAcceleration
+            : state.playerAcceleration;
+
     const targetVelocityX =
         movement.directionX *
-        state.playerMaximumSpeed *
+        maximumSpeed *
         movement.strength;
 
     const targetVelocityY =
         movement.directionY *
-        state.playerMaximumSpeed *
+        maximumSpeed *
         movement.strength;
 
     const hasInput =
@@ -1585,7 +1793,7 @@ function updatePlayerVelocity(
 
     const changeRate =
         hasInput
-            ? state.playerAcceleration
+            ? acceleration
             : state.playerDeceleration;
 
     state.playerVelocityX =
@@ -1626,9 +1834,11 @@ function moveToward(
         return target;
     }
 
-    return current +
+    return (
+        current +
         Math.sign(target - current) *
-        maximumChange;
+        maximumChange
+    );
 }
 
 function updatePlayerFacing(
@@ -1643,8 +1853,14 @@ function updatePlayerFacing(
             state.facingAngle
         );
 
+    const sprintTurnMultiplier =
+        state.sprinting
+            ? 0.78
+            : 1;
+
     const maximumTurn =
         state.turnSpeed *
+        sprintTurnMultiplier *
         deltaSeconds;
 
     state.facingAngle =
@@ -1691,6 +1907,14 @@ function updatePlayerMovement(
 
     player.x = corrected.x;
     player.y = corrected.y;
+
+    if (corrected.hitX) {
+        state.playerVelocityX = 0;
+    }
+
+    if (corrected.hitY) {
+        state.playerVelocityY = 0;
+    }
 }
 
 /* =========================================================
@@ -1804,18 +2028,18 @@ function updatePuckControl(
         state.puckVelocityY
     );
 
-    const controlDistance = 21;
+    const controlDistance = 15;
 
     if (
         distance > controlDistance ||
-        puckSpeed > 250
+        puckSpeed > 220
     ) {
         handlePlayerPuckCollision(scene);
         return;
     }
 
     const controlStrength = Math.min(
-        deltaSeconds * 11,
+        deltaSeconds * 9,
         1
     );
 
@@ -1893,12 +2117,12 @@ function handlePlayerPuckCollision(scene) {
         normalY * overlap;
 
     state.puckVelocityX +=
-        normalX * 25 +
-        state.playerVelocityX * 0.18;
+        normalX * 20 +
+        state.playerVelocityX * 0.15;
 
     state.puckVelocityY +=
-        normalY * 25 +
-        state.playerVelocityY * 0.18;
+        normalY * 20 +
+        state.playerVelocityY * 0.15;
 }
 
 /* =========================================================
@@ -1998,7 +2222,7 @@ function isPuckShootable(state) {
         deltaY * deltaY
     );
 
-    return distance <= 34;
+    return distance <= 18;
 }
 
 function shootPuckWithAim(scene) {
@@ -2041,36 +2265,26 @@ function shootPuckInDirection(
     directionX /= length;
     directionY /= length;
 
-    const blade =
-        getStickBladePosition(state);
-
-    state.puck.x =
-        blade.x +
-        directionX *
-        (
-            state.puckRadius +
-            4
-        );
-
-    state.puck.y =
-        blade.y +
-        directionY *
-        (
-            state.puckRadius +
-            4
-        );
+    /*
+     * Important:
+     * The puck is NOT teleported to the other
+     * side of the blade anymore.
+     *
+     * Only its velocity changes. This prevents
+     * shots near a post from snapping into the net.
+     */
 
     state.puckVelocityX =
         directionX *
         shotSpeed +
         state.playerVelocityX *
-        0.12;
+        0.1;
 
     state.puckVelocityY =
         directionY *
         shotSpeed +
         state.playerVelocityY *
-        0.12;
+        0.1;
 }
 
 /* =========================================================
@@ -2100,7 +2314,7 @@ function updatePuckMovement(
     const steps = Math.max(
         1,
         Math.ceil(
-            travelDistance / 1.5
+            travelDistance / 1
         )
     );
 
@@ -2170,7 +2384,7 @@ function updatePuckMovement(
 }
 
 /* =========================================================
-   SOLID NET COLLISIONS
+   GOAL COLLISIONS
 ========================================================= */
 
 function handleGoalNetCollisions(scene) {
@@ -2194,6 +2408,54 @@ function handleGoalNetCollisions(scene) {
 
     const bottomBackY =
         bottomGoalLineY + netDepth;
+
+    /*
+     * Posts are resolved first.
+     *
+     * If a post was hit, we do not immediately
+     * resolve the adjoining net walls during the
+     * same physics step. This prevents the wall
+     * from pulling the puck into the goal.
+     */
+
+    const posts = [
+        [
+            rink.centerX - mouthHalfWidth,
+            topGoalLineY
+        ],
+        [
+            rink.centerX + mouthHalfWidth,
+            topGoalLineY
+        ],
+        [
+            rink.centerX - mouthHalfWidth,
+            bottomGoalLineY
+        ],
+        [
+            rink.centerX + mouthHalfWidth,
+            bottomGoalLineY
+        ]
+    ];
+
+    let postWasHit = false;
+
+    for (const post of posts) {
+        const hit =
+            resolvePuckPostCollision(
+                state,
+                puck,
+                post[0],
+                post[1]
+            );
+
+        if (hit) {
+            postWasHit = true;
+        }
+    }
+
+    if (postWasHit) {
+        return;
+    }
 
     const topInterior = {
         x: rink.centerX,
@@ -2272,38 +2534,110 @@ function handleGoalNetCollisions(scene) {
             segment[5]
         );
     }
+}
 
-    const postRadius =
-        state.puckRadius + 3;
+function resolvePuckPostCollision(
+    state,
+    puck,
+    postX,
+    postY
+) {
+    const combinedRadius =
+        state.puckRadius + 3.5;
 
-    const posts = [
-        [
-            rink.centerX - mouthHalfWidth,
-            topGoalLineY
-        ],
-        [
-            rink.centerX + mouthHalfWidth,
-            topGoalLineY
-        ],
-        [
-            rink.centerX - mouthHalfWidth,
-            bottomGoalLineY
-        ],
-        [
-            rink.centerX + mouthHalfWidth,
-            bottomGoalLineY
-        ]
-    ];
+    const deltaX =
+        puck.x - postX;
 
-    for (const post of posts) {
-        resolvePuckCircleCollision(
-            state,
-            puck,
-            post[0],
-            post[1],
-            postRadius
-        );
+    const deltaY =
+        puck.y - postY;
+
+    const distanceSquared =
+        deltaX * deltaX +
+        deltaY * deltaY;
+
+    if (
+        distanceSquared >=
+        combinedRadius *
+        combinedRadius
+    ) {
+        return false;
     }
+
+    let distance =
+        Math.sqrt(distanceSquared);
+
+    let normalX;
+    let normalY;
+
+    if (distance > 0.001) {
+        normalX =
+            deltaX / distance;
+
+        normalY =
+            deltaY / distance;
+    } else {
+        const velocityLength =
+            Math.sqrt(
+                state.puckVelocityX *
+                    state.puckVelocityX +
+                state.puckVelocityY *
+                    state.puckVelocityY
+            );
+
+        if (velocityLength > 0.001) {
+            normalX =
+                -state.puckVelocityX /
+                velocityLength;
+
+            normalY =
+                -state.puckVelocityY /
+                velocityLength;
+        } else {
+            normalX = 1;
+            normalY = 0;
+        }
+
+        distance = 0;
+    }
+
+    const overlap =
+        combinedRadius - distance;
+
+    puck.x += normalX * overlap;
+    puck.y += normalY * overlap;
+
+    const velocityAlongNormal =
+        state.puckVelocityX *
+        normalX +
+        state.puckVelocityY *
+        normalY;
+
+    if (velocityAlongNormal < 0) {
+        const restitution = 0.72;
+
+        state.puckVelocityX -=
+            (1 + restitution) *
+            velocityAlongNormal *
+            normalX;
+
+        state.puckVelocityY -=
+            (1 + restitution) *
+            velocityAlongNormal *
+            normalY;
+
+        state.puckVelocityX *= 0.93;
+        state.puckVelocityY *= 0.93;
+    }
+
+    /*
+     * Tiny outward separation prevents the puck
+     * from re-colliding with the post immediately.
+     */
+
+    puck.x += normalX * 0.6;
+    puck.y += normalY * 0.6;
+
+    return true;
 }
 
 function resolveOneSidedNetSegment(
@@ -2336,11 +2670,28 @@ function resolveOneSidedNetSegment(
         ) /
         lengthSquared;
 
+    /*
+     * Leave a small gap near each endpoint.
+     * The circular post collision handles these
+     * regions more naturally than the wall does.
+     */
+
+    const endpointBuffer = 0.13;
+
+    if (
+        projection <
+            endpointBuffer ||
+        projection >
+            1 - endpointBuffer
+    ) {
+        return;
+    }
+
     projection =
         Phaser.Math.Clamp(
             projection,
-            0,
-            1
+            endpointBuffer,
+            1 - endpointBuffer
         );
 
     const closestX =
@@ -2384,36 +2735,11 @@ function resolveOneSidedNetSegment(
         normalY;
 
     const collisionRadius =
-        state.puckRadius + 1.5;
+        state.puckRadius + 1.2;
 
     if (
         signedDistance >=
         collisionRadius
-    ) {
-        return;
-    }
-
-    const closestDeltaX =
-        puck.x - closestX;
-
-    const closestDeltaY =
-        puck.y - closestY;
-
-    const closestDistanceSquared =
-        closestDeltaX *
-        closestDeltaX +
-        closestDeltaY *
-        closestDeltaY;
-
-    if (
-        (
-            projection === 0 ||
-            projection === 1
-        ) &&
-        closestDistanceSquared >
-        collisionRadius *
-        collisionRadius *
-        1.6
     ) {
         return;
     }
@@ -2435,7 +2761,7 @@ function resolveOneSidedNetSegment(
         normalY;
 
     if (velocityAlongNormal < 0) {
-        const restitution = 0.42;
+        const restitution = 0.35;
 
         state.puckVelocityX -=
             (1 + restitution) *
@@ -2447,78 +2773,8 @@ function resolveOneSidedNetSegment(
             velocityAlongNormal *
             normalY;
 
-        state.puckVelocityX *= 0.86;
-        state.puckVelocityY *= 0.86;
-    }
-}
-
-function resolvePuckCircleCollision(
-    state,
-    puck,
-    centerX,
-    centerY,
-    collisionRadius
-) {
-    const deltaX =
-        puck.x - centerX;
-
-    const deltaY =
-        puck.y - centerY;
-
-    const distanceSquared =
-        deltaX * deltaX +
-        deltaY * deltaY;
-
-    if (
-        distanceSquared >=
-        collisionRadius *
-        collisionRadius
-    ) {
-        return;
-    }
-
-    let distance =
-        Math.sqrt(distanceSquared);
-
-    let normalX;
-    let normalY;
-
-    if (distance > 0.001) {
-        normalX =
-            deltaX / distance;
-
-        normalY =
-            deltaY / distance;
-    } else {
-        normalX = 0;
-        normalY = 1;
-        distance = 0;
-    }
-
-    const overlap =
-        collisionRadius - distance;
-
-    puck.x += normalX * overlap;
-    puck.y += normalY * overlap;
-
-    const velocityAlongNormal =
-        state.puckVelocityX *
-        normalX +
-        state.puckVelocityY *
-        normalY;
-
-    if (velocityAlongNormal < 0) {
-        const restitution = 0.55;
-
-        state.puckVelocityX -=
-            (1 + restitution) *
-            velocityAlongNormal *
-            normalX;
-
-        state.puckVelocityY -=
-            (1 + restitution) *
-            velocityAlongNormal *
-            normalY;
+        state.puckVelocityX *= 0.84;
+        state.puckVelocityY *= 0.84;
     }
 }
 
@@ -2665,7 +2921,7 @@ function clampPointInsideRoundedRink(
 
         if (
             distance >
-            innerCornerRadius &&
+                innerCornerRadius &&
             distance > 0
         ) {
             const normalX =

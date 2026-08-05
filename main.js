@@ -17,7 +17,14 @@ const config = {
 const game = new Phaser.Game(config);
 
 function create() {
-
+const rinkWidth = 330;
+const rinkHeight = 610;
+const rinkCenterX = this.cameras.main.centerX;
+const rinkCenterY = this.cameras.main.centerY;
+const rinkTop = rinkCenterY - (rinkHeight / 2);
+const rinkBottom = rinkCenterY + (rinkHeight / 2);
+const rinkLeft = rinkCenterX - (rinkWidth / 2);
+const rinkRight = rinkCenterX + (rinkWidth / 2);
 const titleText = this.add.text(
         this.cameras.main.centerX,
         80,

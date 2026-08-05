@@ -30,8 +30,11 @@ function create() {
         cornerRadius: 55
     };
 
-    rink.centerX = scene.cameras.main.centerX;
-    rink.centerY = scene.cameras.main.centerY;
+    rink.centerX =
+        scene.cameras.main.centerX;
+
+    rink.centerY =
+        scene.cameras.main.centerY;
 
     rink.left =
         rink.centerX -
@@ -98,6 +101,30 @@ function create() {
         offensiveGoal: {
             x: rink.centerX,
             y: rink.top + 44
+        },
+
+        score: {
+            top: 0,
+            bottom: 0,
+
+            text: null
+        },
+
+        goalPresentation: {
+            active: false,
+
+            scoredSide: null,
+
+            topLight: null,
+            bottomLight: null,
+
+            topGlow: null,
+            bottomGlow: null,
+
+            banner: null,
+            subtext: null,
+
+            resetTimer: null
         },
 
         possession: {
@@ -168,7 +195,7 @@ function create() {
     const versionText = scene.add.text(
         rink.centerX,
         170,
-        "Version 0.0.59",
+        "Version 0.0.61",
         {
             font: "24px Arial",
             fill: "#ffffff"
@@ -210,18 +237,49 @@ function create() {
                     "#d8f0ff"
                 );
 
-            drawRink(scene, rink);
+            drawRink(
+                scene,
+                rink
+            );
 
-            createPlayer(scene);
-            createTeammates(scene);
-            createPuck(scene);
+            createGoalPresentation(
+                scene
+            );
 
-            createMobileControls(scene);
-            createKeyboardControls(scene);
+            createScoreboard(
+                scene
+            );
+
+            createPlayer(
+                scene
+            );
+
+            createTeammates(
+                scene
+            );
+
+            createPuck(
+                scene
+            );
+
+            createMobileControls(
+                scene
+            );
+
+            createKeyboardControls(
+                scene
+            );
 
             state.gameStarted = true;
 
-            updatePlayerStick(scene);
+            resetPlayersForCenterFaceoff(
+                scene,
+                false
+            );
+
+            updatePlayerStick(
+                scene
+            );
         }
     );
 
@@ -275,14 +333,18 @@ function create() {
     scene.input.on(
         "gameout",
         () => {
-            cancelJoysticks(scene);
+            cancelJoysticks(
+                scene
+            );
         }
     );
 
     window.addEventListener(
         "blur",
         () => {
-            cancelJoysticks(scene);
+            cancelJoysticks(
+                scene
+            );
         }
     );
 }
@@ -308,7 +370,27 @@ function update(time, delta) {
             0.05
         );
 
-    updateKeyboardInput(this);
+    if (
+        state.goalPresentation.active
+    ) {
+        freezeGameplayDuringGoal(
+            this
+        );
+
+        updatePlayerStick(
+            this
+        );
+
+        updateTeammateIndicators(
+            this
+        );
+
+        return;
+    }
+
+    updateKeyboardInput(
+        this
+    );
 
     updatePlayerVelocity(
         this,
@@ -325,7 +407,9 @@ function update(time, delta) {
         deltaSeconds
     );
 
-    updatePlayerStick(this);
+    updatePlayerStick(
+        this
+    );
 
     updateTeammateAI(
         this,
@@ -337,21 +421,707 @@ function update(time, delta) {
         deltaSeconds
     );
 
-    if (!state.possession.owner) {
+    if (
+        !state.possession.owner
+    ) {
         updatePuckMovement(
             this,
             deltaSeconds
         );
 
-        checkForPuckPickup(this);
+        if (
+            !state.goalPresentation.active
+        ) {
+            checkForPuckPickup(
+                this
+            );
+        }
     }
 
-    if (state.possession.owner) {
-        hardLockPossessedPuck(this);
+    if (
+        state.possession.owner &&
+        !state.goalPresentation.active
+    ) {
+        hardLockPossessedPuck(
+            this
+        );
     }
 
-    updateAimGuide(this);
-    updateTeammateIndicators(this);
+    updateAimGuide(
+        this
+    );
+
+    updateTeammateIndicators(
+        this
+    );
+}
+
+/* =========================================================
+   SCOREBOARD AND GOAL PRESENTATION
+========================================================= */
+
+function createScoreboard(scene) {
+    const state =
+        scene.gameState;
+
+    const rink =
+        state.rink;
+
+    state.score.text =
+        scene.add.text(
+            rink.centerX,
+            rink.top + 16,
+            "0  -  0",
+            {
+                font:
+                    "bold 18px Arial",
+
+                fill:
+                    "#ffffff",
+
+                backgroundColor:
+                    "#17375e",
+
+                padding: {
+                    left: 12,
+                    right: 12,
+                    top: 5,
+                    bottom: 5
+                }
+            }
+        )
+            .setOrigin(0.5)
+            .setDepth(150);
+}
+
+function updateScoreboard(scene) {
+    const state =
+        scene.gameState;
+
+    if (!state.score.text) {
+        return;
+    }
+
+    state.score.text.setText(
+        `${state.score.top}  -  ${state.score.bottom}`
+    );
+}
+
+function createGoalPresentation(scene) {
+    const state =
+        scene.gameState;
+
+    const rink =
+        state.rink;
+
+    const presentation =
+        state.goalPresentation;
+
+    const topGoalLineY =
+        rink.top + 44;
+
+    const bottomGoalLineY =
+        rink.bottom - 44;
+
+    presentation.topGlow =
+        scene.add.circle(
+            rink.centerX,
+            topGoalLineY - 34,
+            20,
+            0xff0000,
+            0
+        )
+            .setDepth(12);
+
+    presentation.topLight =
+        scene.add.circle(
+            rink.centerX,
+            topGoalLineY - 34,
+            7,
+            0x5a0000,
+            0.9
+        )
+            .setStrokeStyle(
+                2,
+                0xffffff,
+                0.8
+            )
+            .setDepth(13);
+
+    presentation.bottomGlow =
+        scene.add.circle(
+            rink.centerX,
+            bottomGoalLineY + 34,
+            20,
+            0xff0000,
+            0
+        )
+            .setDepth(12);
+
+    presentation.bottomLight =
+        scene.add.circle(
+            rink.centerX,
+            bottomGoalLineY + 34,
+            7,
+            0x5a0000,
+            0.9
+        )
+            .setStrokeStyle(
+                2,
+                0xffffff,
+                0.8
+            )
+            .setDepth(13);
+
+    presentation.banner =
+        scene.add.text(
+            rink.centerX,
+            rink.centerY - 26,
+            "GOAL!",
+            {
+                font:
+                    "bold 48px Arial",
+
+                fill:
+                    "#ffffff",
+
+                stroke:
+                    "#b00000",
+
+                strokeThickness:
+                    8,
+
+                align:
+                    "center"
+            }
+        )
+            .setOrigin(0.5)
+            .setDepth(200)
+            .setVisible(false);
+
+    presentation.subtext =
+        scene.add.text(
+            rink.centerX,
+            rink.centerY + 22,
+            "Play resetting...",
+            {
+                font:
+                    "bold 16px Arial",
+
+                fill:
+                    "#ffffff",
+
+                backgroundColor:
+                    "#9d1111",
+
+                padding: {
+                    left: 10,
+                    right: 10,
+                    top: 5,
+                    bottom: 5
+                }
+            }
+        )
+            .setOrigin(0.5)
+            .setDepth(200)
+            .setVisible(false);
+}
+
+function checkForGoal(
+    scene,
+    previousX,
+    previousY
+) {
+    const state =
+        scene.gameState;
+
+    if (
+        state.goalPresentation.active ||
+        state.possession.owner
+    ) {
+        return false;
+    }
+
+    const geometry =
+        getGoalGeometry(
+            state
+        );
+
+    const puck =
+        state.puck;
+
+    const insideMouth =
+        puck.x >
+            state.rink.centerX -
+                geometry.mouthHalfWidth +
+                state.puckRadius &&
+        puck.x <
+            state.rink.centerX +
+                geometry.mouthHalfWidth -
+                state.puckRadius;
+
+    if (!insideMouth) {
+        return false;
+    }
+
+    const crossedTopGoalLine =
+        previousY >
+            geometry.topLineY -
+                state.puckRadius &&
+        puck.y <=
+            geometry.topLineY -
+                state.puckRadius;
+
+    if (crossedTopGoalLine) {
+        registerGoal(
+            scene,
+            "top"
+        );
+
+        return true;
+    }
+
+    const crossedBottomGoalLine =
+        previousY <
+            geometry.bottomLineY +
+                state.puckRadius &&
+        puck.y >=
+            geometry.bottomLineY +
+                state.puckRadius;
+
+    if (crossedBottomGoalLine) {
+        registerGoal(
+            scene,
+            "bottom"
+        );
+
+        return true;
+    }
+
+    return false;
+}
+
+function registerGoal(
+    scene,
+    scoredSide
+) {
+    const state =
+        scene.gameState;
+
+    const presentation =
+        state.goalPresentation;
+
+    if (presentation.active) {
+        return;
+    }
+
+    presentation.active = true;
+    presentation.scoredSide =
+        scoredSide;
+
+    releasePossession(
+        state,
+        999
+    );
+
+    state.possession.passTarget =
+        null;
+
+    state.possession.passTargetType =
+        null;
+
+    state.puckVelocityX = 0;
+    state.puckVelocityY = 0;
+
+    state.playerVelocityX = 0;
+    state.playerVelocityY = 0;
+
+    state.movement.directionX = 0;
+    state.movement.directionY = 0;
+    state.movement.strength = 0;
+
+    resetMovementJoystick(
+        scene
+    );
+
+    resetAimJoystick(
+        scene
+    );
+
+    state.sprinting = false;
+
+    updateSprintButtonAppearance(
+        scene
+    );
+
+    for (
+        const teammate
+        of state.teammates
+    ) {
+        teammate.velocityX = 0;
+        teammate.velocityY = 0;
+    }
+
+    if (scoredSide === "top") {
+        state.score.top += 1;
+    } else {
+        state.score.bottom += 1;
+    }
+
+    updateScoreboard(
+        scene
+    );
+
+    showGoalPresentation(
+        scene,
+        scoredSide
+    );
+
+    if (presentation.resetTimer) {
+        presentation.resetTimer.remove(
+            false
+        );
+    }
+
+    presentation.resetTimer =
+        scene.time.delayedCall(
+            2100,
+            () => {
+                resetAfterGoal(
+                    scene
+                );
+            }
+        );
+}
+
+function showGoalPresentation(
+    scene,
+    scoredSide
+) {
+    const state =
+        scene.gameState;
+
+    const presentation =
+        state.goalPresentation;
+
+    presentation.banner
+        .setVisible(true)
+        .setScale(0.65)
+        .setAlpha(0);
+
+    presentation.subtext
+        .setVisible(true)
+        .setAlpha(0);
+
+    scene.tweens.add({
+        targets:
+            presentation.banner,
+
+        alpha: 1,
+        scaleX: 1.15,
+        scaleY: 1.15,
+
+        duration: 220,
+
+        ease:
+            "Back.Out",
+
+        yoyo: true,
+
+        hold: 550
+    });
+
+    scene.tweens.add({
+        targets:
+            presentation.subtext,
+
+        alpha: 1,
+
+        duration: 180
+    });
+
+    const activeLight =
+        scoredSide === "top"
+            ? presentation.topLight
+            : presentation.bottomLight;
+
+    const activeGlow =
+        scoredSide === "top"
+            ? presentation.topGlow
+            : presentation.bottomGlow;
+
+    activeLight.setFillStyle(
+        0xff1111,
+        1
+    );
+
+    activeGlow.setFillStyle(
+        0xff0000,
+        0.45
+    );
+
+    scene.tweens.add({
+        targets: [
+            activeLight,
+            activeGlow
+        ],
+
+        alpha: {
+            from: 1,
+            to: 0.2
+        },
+
+        scaleX: {
+            from: 1,
+            to: 1.45
+        },
+
+        scaleY: {
+            from: 1,
+            to: 1.45
+        },
+
+        duration: 180,
+        yoyo: true,
+        repeat: 5
+    });
+
+    scene.cameras.main.flash(
+        130,
+        255,
+        40,
+        40,
+        false
+    );
+}
+
+function resetAfterGoal(scene) {
+    const state =
+        scene.gameState;
+
+    const presentation =
+        state.goalPresentation;
+
+    scene.tweens.killTweensOf(
+        presentation.topLight
+    );
+
+    scene.tweens.killTweensOf(
+        presentation.bottomLight
+    );
+
+    scene.tweens.killTweensOf(
+        presentation.topGlow
+    );
+
+    scene.tweens.killTweensOf(
+        presentation.bottomGlow
+    );
+
+    presentation.topLight
+        .setFillStyle(
+            0x5a0000,
+            0.9
+        )
+        .setAlpha(1)
+        .setScale(1);
+
+    presentation.bottomLight
+        .setFillStyle(
+            0x5a0000,
+            0.9
+        )
+        .setAlpha(1)
+        .setScale(1);
+
+    presentation.topGlow
+        .setAlpha(0)
+        .setScale(1);
+
+    presentation.bottomGlow
+        .setAlpha(0)
+        .setScale(1);
+
+    presentation.banner
+        .setVisible(false)
+        .setAlpha(1)
+        .setScale(1);
+
+    presentation.subtext
+        .setVisible(false)
+        .setAlpha(1);
+
+    presentation.active = false;
+    presentation.scoredSide = null;
+    presentation.resetTimer = null;
+
+    resetPlayersForCenterFaceoff(
+        scene,
+        true
+    );
+}
+
+function resetPlayersForCenterFaceoff(
+    scene,
+    afterGoal
+) {
+    const state =
+        scene.gameState;
+
+    const rink =
+        state.rink;
+
+    state.possession.owner = null;
+
+    state.possession.passTarget =
+        null;
+
+    state.possession.passTargetType =
+        null;
+
+    state.possession.pickupCooldown =
+        afterGoal
+            ? 0.85
+            : 0.35;
+
+    state.playerVelocityX = 0;
+    state.playerVelocityY = 0;
+
+    state.facingAngle =
+        -Math.PI / 2;
+
+    state.targetFacingAngle =
+        -Math.PI / 2;
+
+    state.facingX = 0;
+    state.facingY = -1;
+
+    state.player.setPosition(
+        rink.centerX,
+        rink.centerY + 72
+    );
+
+    const teammatePositions = [
+        {
+            x:
+                rink.centerX - 70,
+
+            y:
+                rink.centerY + 28,
+
+            facingX: 0,
+            facingY: -1
+        },
+        {
+            x:
+                rink.centerX + 70,
+
+            y:
+                rink.centerY + 28,
+
+            facingX: 0,
+            facingY: -1
+        }
+    ];
+
+    for (
+        let index = 0;
+        index <
+        state.teammates.length;
+        index += 1
+    ) {
+        const teammate =
+            state.teammates[index];
+
+        const position =
+            teammatePositions[index] ||
+            teammatePositions[0];
+
+        teammate.body.setPosition(
+            position.x,
+            position.y
+        );
+
+        teammate.velocityX = 0;
+        teammate.velocityY = 0;
+
+        teammate.facingX =
+            position.facingX;
+
+        teammate.facingY =
+            position.facingY;
+
+        teammate.targetX =
+            position.x;
+
+        teammate.targetY =
+            position.y;
+
+        teammate.possessionTime = 0;
+
+        teammate.decisionTimer =
+            Phaser.Math.FloatBetween(
+                0.8,
+                1.35
+            );
+
+        updateTeammateVisuals(
+            teammate
+        );
+    }
+
+    state.puck.setPosition(
+        rink.centerX,
+        rink.centerY
+    );
+
+    state.puckVelocityX = 0;
+    state.puckVelocityY = 0;
+
+    resetMovementJoystick(
+        scene
+    );
+
+    resetAimJoystick(
+        scene
+    );
+
+    state.sprinting = false;
+
+    updateSprintButtonAppearance(
+        scene
+    );
+
+    updatePlayerStick(
+        scene
+    );
+}
+
+function freezeGameplayDuringGoal(scene) {
+    const state =
+        scene.gameState;
+
+    state.playerVelocityX = 0;
+    state.playerVelocityY = 0;
+
+    state.puckVelocityX = 0;
+    state.puckVelocityY = 0;
+
+    state.movement.directionX = 0;
+    state.movement.directionY = 0;
+    state.movement.strength = 0;
+
+    for (
+        const teammate
+        of state.teammates
+    ) {
+        teammate.velocityX = 0;
+        teammate.velocityY = 0;
+
+        updateTeammateVisuals(
+            teammate
+        );
+    }
 }
 
 /* =========================================================
@@ -1101,18 +1871,19 @@ function createPlayer(scene) {
     const rink =
         state.rink;
 
-    state.player = scene.add.circle(
-        rink.centerX,
-        rink.centerY + 95,
-        state.playerRadius,
-        0x1769d2
-    )
-        .setStrokeStyle(
-            3,
-            0xffffff,
-            1
+    state.player =
+        scene.add.circle(
+            rink.centerX,
+            rink.centerY + 95,
+            state.playerRadius,
+            0x1769d2
         )
-        .setDepth(20);
+            .setStrokeStyle(
+                3,
+                0xffffff,
+                1
+            )
+            .setDepth(20);
 
     state.playerStick =
         scene.add.graphics()
@@ -1154,40 +1925,42 @@ function createTeammate(
     const state =
         scene.gameState;
 
-    const body = scene.add.circle(
-        x,
-        y,
-        state.teammateRadius,
-        0x2b8f45
-    )
-        .setStrokeStyle(
-            3,
-            0xffffff,
-            1
+    const body =
+        scene.add.circle(
+            x,
+            y,
+            state.teammateRadius,
+            0x2b8f45
         )
-        .setDepth(20);
+            .setStrokeStyle(
+                3,
+                0xffffff,
+                1
+            )
+            .setDepth(20);
 
     const stick =
         scene.add.graphics()
             .setDepth(21);
 
-    const label = scene.add.text(
-        x,
-        y - 19,
-        name,
-        {
-            font:
-                "bold 10px Arial",
+    const label =
+        scene.add.text(
+            x,
+            y - 19,
+            name,
+            {
+                font:
+                    "bold 10px Arial",
 
-            fill:
-                "#123d21",
+                fill:
+                    "#123d21",
 
-            backgroundColor:
-                "#ffffff"
-        }
-    )
-        .setOrigin(0.5)
-        .setDepth(24);
+                backgroundColor:
+                    "#ffffff"
+            }
+        )
+            .setOrigin(0.5)
+            .setDepth(24);
 
     const targetRing =
         scene.add.graphics()
@@ -1271,6 +2044,12 @@ function updateTeammateAI(
     const state =
         scene.gameState;
 
+    if (
+        state.goalPresentation.active
+    ) {
+        return;
+    }
+
     for (
         const teammate
         of state.teammates
@@ -1346,10 +2125,13 @@ function chooseTeammateTarget(
     }
 
     const loosePuckChaser =
-        findLoosePuckChaser(state);
+        findLoosePuckChaser(
+            state
+        );
 
     if (
-        loosePuckChaser === teammate
+        loosePuckChaser ===
+        teammate
     ) {
         teammate.targetX =
             state.puck.x;
@@ -1436,8 +2218,7 @@ function chooseSupportTargetForPlayer(
             );
 
         teammate.targetY =
-            state.offensiveGoal.y +
-            80;
+            state.offensiveGoal.y + 80;
 
         return;
     }
@@ -1490,8 +2271,7 @@ function chooseSupportTargetForTeammate(
             );
 
         teammate.targetY =
-            state.offensiveGoal.y +
-            75;
+            state.offensiveGoal.y + 75;
     } else {
         teammate.targetX =
             rink.centerX +
@@ -1556,16 +2336,15 @@ function choosePuckCarrierTarget(
 
     teammate.targetX =
         rink.centerX +
-        (
-            teammate.cycleDirection *
-            18
-        );
+        teammate.cycleDirection * 18;
 
     teammate.targetY =
         goal.y + 64;
 }
 
-function findLoosePuckChaser(state) {
+function findLoosePuckChaser(
+    state
+) {
     let closestTeammate = null;
     let closestDistance = Infinity;
 
@@ -1902,7 +2681,10 @@ function updateTeammateFacing(
             desiredY * desiredY
         );
 
-    if (desiredLength < 0.001) {
+    if (
+        desiredLength <
+        0.001
+    ) {
         return;
     }
 
@@ -1945,10 +2727,14 @@ function updateTeammateFacing(
         );
 
     teammate.facingX =
-        Math.cos(newAngle);
+        Math.cos(
+            newAngle
+        );
 
     teammate.facingY =
-        Math.sin(newAngle);
+        Math.sin(
+            newAngle
+        );
 }
 
 function updateTeammateVisuals(
@@ -2069,7 +2855,10 @@ function updateTeammateIndicators(
         scene.gameState;
 
     const target =
-        state.aim.active
+        (
+            state.aim.active &&
+            !state.goalPresentation.active
+        )
             ? findPassTarget(
                 state,
                 state.aim.directionX,
@@ -2083,7 +2872,9 @@ function updateTeammateIndicators(
     ) {
         teammate.targetRing.clear();
 
-        if (teammate === target) {
+        if (
+            teammate === target
+        ) {
             teammate.targetRing
                 .lineStyle(
                     3,
@@ -2112,18 +2903,19 @@ function createPuck(scene) {
     const rink =
         state.rink;
 
-    state.puck = scene.add.circle(
-        rink.centerX,
-        rink.centerY + 50,
-        state.puckRadius,
-        0x111111
-    )
-        .setStrokeStyle(
-            1,
-            0x555555,
-            1
+    state.puck =
+        scene.add.circle(
+            rink.centerX,
+            rink.centerY,
+            state.puckRadius,
+            0x111111
         )
-        .setDepth(22);
+            .setStrokeStyle(
+                1,
+                0x555555,
+                1
+            )
+            .setDepth(22);
 }
 
 /* =========================================================
@@ -2147,11 +2939,16 @@ function updatePossession(
                 deltaSeconds
         );
 
-    if (!possession.owner) {
+    if (
+        state.goalPresentation.active ||
+        !possession.owner
+    ) {
         return;
     }
 
-    hardLockPossessedPuck(scene);
+    hardLockPossessedPuck(
+        scene
+    );
 
     if (
         possession.owner ===
@@ -2174,6 +2971,12 @@ function updateAIPuckDecision(
 ) {
     const state =
         scene.gameState;
+
+    if (
+        state.goalPresentation.active
+    ) {
+        return;
+    }
 
     teammate.possessionTime +=
         deltaSeconds;
@@ -2217,9 +3020,10 @@ function updateAIPuckDecision(
 
     let shotChance = 0;
 
-    if (distanceToGoal < 85) {
-        shotChance =
-            0.82;
+    if (
+        distanceToGoal < 85
+    ) {
+        shotChance = 0.82;
     } else if (
         distanceToGoal < 125
     ) {
@@ -2285,25 +3089,29 @@ function chooseAIPassTarget(
 ) {
     const candidates = [];
 
+    const playerGeometry =
+        getPlayerStickGeometry(
+            state
+        );
+
     candidates.push({
         type: "player",
         target: state.player,
+
         x:
-            getPlayerStickGeometry(
-                state
-            ).puckAnchorX,
+            playerGeometry.puckAnchorX,
 
         y:
-            getPlayerStickGeometry(
-                state
-            ).puckAnchorY
+            playerGeometry.puckAnchorY
     });
 
     for (
         const other
         of state.teammates
     ) {
-        if (other === teammate) {
+        if (
+            other === teammate
+        ) {
             continue;
         }
 
@@ -2315,6 +3123,7 @@ function chooseAIPassTarget(
         candidates.push({
             type: "teammate",
             target: other,
+
             x:
                 geometry.puckAnchorX,
 
@@ -2384,7 +3193,9 @@ function chooseAIPassTarget(
             score += 0.35;
         }
 
-        if (score > bestScore) {
+        if (
+            score > bestScore
+        ) {
             bestScore = score;
             best = candidate;
         }
@@ -2401,8 +3212,9 @@ function shootFromTeammate(
         scene.gameState;
 
     if (
+        state.goalPresentation.active ||
         state.possession.owner !==
-        teammate
+            teammate
     ) {
         return;
     }
@@ -2439,7 +3251,9 @@ function shootFromTeammate(
             directionY * directionY
         );
 
-    if (distance < 0.001) {
+    if (
+        distance < 0.001
+    ) {
         return;
     }
 
@@ -2495,8 +3309,9 @@ function passFromTeammate(
         scene.gameState;
 
     if (
+        state.goalPresentation.active ||
         state.possession.owner !==
-        teammate
+            teammate
     ) {
         return;
     }
@@ -2550,7 +3365,9 @@ function passFromTeammate(
             directionY * directionY
         );
 
-    if (distance < 0.001) {
+    if (
+        distance < 0.001
+    ) {
         return;
     }
 
@@ -2604,7 +3421,10 @@ function hardLockPossessedPuck(
     const owner =
         state.possession.owner;
 
-    if (!owner) {
+    if (
+        !owner ||
+        state.goalPresentation.active
+    ) {
         return;
     }
 
@@ -2612,8 +3432,7 @@ function hardLockPossessedPuck(
     state.puckVelocityY = 0;
 
     if (
-        owner ===
-        state.player
+        owner === state.player
     ) {
         const geometry =
             getPlayerStickGeometry(
@@ -2649,6 +3468,7 @@ function checkForPuckPickup(
         state.possession;
 
     if (
+        state.goalPresentation.active ||
         possession.owner ||
         possession.pickupCooldown > 0
     ) {
@@ -2674,7 +3494,9 @@ function checkForPuckPickup(
                 geometry.puckAnchorY
             );
 
-        if (distance <= 23) {
+        if (
+            distance <= 23
+        ) {
             givePuckToPlayer(
                 scene
             );
@@ -2701,7 +3523,9 @@ function checkForPuckPickup(
                 geometry.puckAnchorY
             );
 
-        if (distance <= 23) {
+        if (
+            distance <= 23
+        ) {
             givePuckToTeammate(
                 scene,
                 possession.passTarget
@@ -2786,7 +3610,9 @@ function checkForPuckPickup(
         closest.type ===
         "player"
     ) {
-        givePuckToPlayer(scene);
+        givePuckToPlayer(
+            scene
+        );
     } else {
         givePuckToTeammate(
             scene,
@@ -2801,6 +3627,12 @@ function givePuckToPlayer(
     const state =
         scene.gameState;
 
+    if (
+        state.goalPresentation.active
+    ) {
+        return;
+    }
+
     state.possession.owner =
         state.player;
 
@@ -2813,7 +3645,9 @@ function givePuckToPlayer(
     state.puckVelocityX = 0;
     state.puckVelocityY = 0;
 
-    hardLockPossessedPuck(scene);
+    hardLockPossessedPuck(
+        scene
+    );
 }
 
 function givePuckToTeammate(
@@ -2822,6 +3656,12 @@ function givePuckToTeammate(
 ) {
     const state =
         scene.gameState;
+
+    if (
+        state.goalPresentation.active
+    ) {
+        return;
+    }
 
     state.possession.owner =
         teammate;
@@ -2843,7 +3683,9 @@ function givePuckToTeammate(
             1.1
         );
 
-    hardLockPossessedPuck(scene);
+    hardLockPossessedPuck(
+        scene
+    );
 }
 
 function releasePossession(
@@ -2959,7 +3801,13 @@ function createMovementJoystick(
     hitArea.on(
         "pointerdown",
         pointer => {
-            if (movement.active) {
+            const state =
+                scene.gameState;
+
+            if (
+                state.goalPresentation.active ||
+                movement.active
+            ) {
                 return;
             }
 
@@ -3069,7 +3917,13 @@ function createAimJoystick(
     hitArea.on(
         "pointerdown",
         pointer => {
-            if (aim.active) {
+            const state =
+                scene.gameState;
+
+            if (
+                state.goalPresentation.active ||
+                aim.active
+            ) {
                 return;
             }
 
@@ -3153,6 +4007,12 @@ function createSprintButton(
         localY,
         event
     ) => {
+        if (
+            state.goalPresentation.active
+        ) {
+            return;
+        }
+
         state.sprinting =
             !state.sprinting;
 
@@ -3229,10 +4089,14 @@ function updateMovementPointer(
     scene,
     pointer
 ) {
+    const state =
+        scene.gameState;
+
     const movement =
-        scene.gameState.movement;
+        state.movement;
 
     if (
+        state.goalPresentation.active ||
         !movement.active ||
         movement.pointerId !==
             pointer.id
@@ -3267,7 +4131,9 @@ function updateMovementFromPointer(
             deltaY * deltaY
         );
 
-    if (distance < 4) {
+    if (
+        distance < 4
+    ) {
         movement.directionX = 0;
         movement.directionY = 0;
         movement.strength = 0;
@@ -3373,10 +4239,14 @@ function updateAimPointer(
     scene,
     pointer
 ) {
+    const state =
+        scene.gameState;
+
     const aim =
-        scene.gameState.aim;
+        state.aim;
 
     if (
+        state.goalPresentation.active ||
         !aim.active ||
         aim.pointerId !==
             pointer.id
@@ -3414,7 +4284,9 @@ function updateAimFromPointer(
             deltaY * deltaY
         );
 
-    if (distance < 4) {
+    if (
+        distance < 4
+    ) {
         aim.directionX =
             state.facingX;
 
@@ -3498,8 +4370,11 @@ function finishAimPointer(
     pointer,
     shouldShoot
 ) {
+    const state =
+        scene.gameState;
+
     const aim =
-        scene.gameState.aim;
+        state.aim;
 
     if (
         !aim.active ||
@@ -3510,13 +4385,18 @@ function finishAimPointer(
     }
 
     if (
+        !state.goalPresentation.active &&
         shouldShoot &&
         aim.strength > 0.08
     ) {
-        useShotControl(scene);
+        useShotControl(
+            scene
+        );
     }
 
-    resetAimJoystick(scene);
+    resetAimJoystick(
+        scene
+    );
 }
 
 function resetAimJoystick(
@@ -3569,8 +4449,13 @@ function cancelJoysticks(scene) {
         return;
     }
 
-    resetMovementJoystick(scene);
-    resetAimJoystick(scene);
+    resetMovementJoystick(
+        scene
+    );
+
+    resetAimJoystick(
+        scene
+    );
 }
 
 /* =========================================================
@@ -3646,6 +4531,12 @@ function updateKeyboardInput(
     const state =
         scene.gameState;
 
+    if (
+        state.goalPresentation.active
+    ) {
+        return;
+    }
+
     const keyboard =
         state.keyboard;
 
@@ -3704,7 +4595,9 @@ function updateKeyboardInput(
 
         state.movement.strength = 1;
 
-        if (!state.aim.active) {
+        if (
+            !state.aim.active
+        ) {
             state.targetFacingAngle =
                 Math.atan2(
                     state.movement
@@ -4033,8 +4926,9 @@ function findPassTarget(
     directionY
 ) {
     if (
+        state.goalPresentation.active ||
         state.possession.owner !==
-        state.player
+            state.player
     ) {
         return null;
     }
@@ -4052,7 +4946,8 @@ function findPassTarget(
         );
 
     let bestTarget = null;
-    let bestDot = minimumDot;
+    let bestDot =
+        minimumDot;
 
     for (
         const teammate
@@ -4077,7 +4972,9 @@ function findPassTarget(
                 deltaY * deltaY
             );
 
-        if (distance < 1) {
+        if (
+            distance < 1
+        ) {
             continue;
         }
 
@@ -4093,7 +4990,9 @@ function findPassTarget(
             directionY *
                 targetDirectionY;
 
-        if (dot > bestDot) {
+        if (
+            dot > bestDot
+        ) {
             bestDot = dot;
             bestTarget = teammate;
         }
@@ -4102,7 +5001,9 @@ function findPassTarget(
     return bestTarget;
 }
 
-function useShotControl(scene) {
+function useShotControl(
+    scene
+) {
     const state =
         scene.gameState;
 
@@ -4110,8 +5011,9 @@ function useShotControl(scene) {
         state.aim;
 
     if (
+        state.goalPresentation.active ||
         state.possession.owner !==
-        state.player
+            state.player
     ) {
         return;
     }
@@ -4154,8 +5056,9 @@ function passPuckToTeammate(
         scene.gameState;
 
     if (
+        state.goalPresentation.active ||
         state.possession.owner !==
-        state.player
+            state.player
     ) {
         return;
     }
@@ -4184,7 +5087,9 @@ function passPuckToTeammate(
             deltaY * deltaY
         );
 
-    if (distance < 0.001) {
+    if (
+        distance < 0.001
+    ) {
         return;
     }
 
@@ -4233,8 +5138,9 @@ function shootPuckInDirection(
         scene.gameState;
 
     if (
+        state.goalPresentation.active ||
         state.possession.owner !==
-        state.player
+            state.player
     ) {
         return;
     }
@@ -4296,7 +5202,9 @@ function shootPuckInDirection(
    AIM GUIDE
 ========================================================= */
 
-function updateAimGuide(scene) {
+function updateAimGuide(
+    scene
+) {
     const state =
         scene.gameState;
 
@@ -4313,7 +5221,10 @@ function updateAimGuide(scene) {
     aim.guide.clear();
     aim.powerBar.clear();
 
-    if (!aim.active) {
+    if (
+        !aim.active ||
+        state.goalPresentation.active
+    ) {
         return;
     }
 
@@ -4480,6 +5391,12 @@ function updatePuckMovement(
         step < steps;
         step += 1
     ) {
+        const previousX =
+            puck.x;
+
+        const previousY =
+            puck.y;
+
         puck.x +=
             state.puckVelocityX *
             deltaSeconds /
@@ -4489,6 +5406,17 @@ function updatePuckMovement(
             state.puckVelocityY *
             deltaSeconds /
             steps;
+
+        const goalWasScored =
+            checkForGoal(
+                scene,
+                previousX,
+                previousY
+            );
+
+        if (goalWasScored) {
+            return;
+        }
 
         handleGoalNetCollisions(
             scene
@@ -4522,18 +5450,24 @@ function updatePuckMovement(
         );
 
         if (
-            state.possession.owner
+            state.possession.owner ||
+            state.goalPresentation.active
         ) {
-            hardLockPossessedPuck(
-                scene
-            );
+            if (
+                state.possession.owner
+            ) {
+                hardLockPossessedPuck(
+                    scene
+                );
+            }
 
             break;
         }
     }
 
     if (
-        state.possession.owner
+        state.possession.owner ||
+        state.goalPresentation.active
     ) {
         return;
     }
@@ -4571,7 +5505,9 @@ function updatePuckMovement(
    GOAL GEOMETRY
 ========================================================= */
 
-function getGoalGeometry(state) {
+function getGoalGeometry(
+    state
+) {
     const rink =
         state.rink;
 
@@ -4586,6 +5522,12 @@ function getGoalGeometry(state) {
         rink.bottom - 44;
 
     return {
+        mouthHalfWidth,
+        backHalfWidth,
+        depth,
+        topLineY,
+        bottomLineY,
+
         posts: [
             [
                 rink.centerX -
@@ -4683,7 +5625,8 @@ function handleGoalNetCollisions(
         state.puck;
 
     if (
-        state.possession.owner
+        state.possession.owner ||
+        state.goalPresentation.active
     ) {
         return;
     }
@@ -4862,7 +5805,9 @@ function resolvePuckSegmentCollision(
     let normalX;
     let normalY;
 
-    if (distance > 0.001) {
+    if (
+        distance > 0.001
+    ) {
         normalX =
             deltaX / distance;
 
@@ -4897,7 +5842,9 @@ function resolvePuckSegmentCollision(
             state.puckVelocityY *
                 normalY;
 
-        if (velocityDot > 0) {
+        if (
+            velocityDot > 0
+        ) {
             normalX *= -1;
             normalY *= -1;
         }
@@ -4996,7 +5943,9 @@ function resolvePuckCircleCollision(
     let normalX;
     let normalY;
 
-    if (distance > 0.001) {
+    if (
+        distance > 0.001
+    ) {
         normalX =
             deltaX / distance;
 

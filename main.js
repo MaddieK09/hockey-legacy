@@ -177,9 +177,9 @@ rinkGraphics.lineStyle(3, 0xff3b30, 1);
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX - 165,
-this.cameras.main.centerY - 289,
+rinkTop + 11,
     this.cameras.main.centerX + 165,
-this.cameras.main.centerY - 289
+rinkTop + 11
 );
 
 // Bottom goal crease
@@ -187,20 +187,20 @@ rinkGraphics.beginPath();
 
 rinkGraphics.moveTo(
     this.cameras.main.centerX + 40,
-this.cameras.main.centerY + 298
+rinkBottom - 11
 );
 
 rinkGraphics.lineTo(
     this.cameras.main.centerX - 40,
-this.cameras.main.centerY + 298
+rinkBottom - 11
 );
 
 rinkGraphics.arc(
     this.cameras.main.centerX,
-this.cameras.main.centerY + 298,
+rinkBottom - 12,
     40,
+0,
     Math.PI,
-    Math.PI * 2,
     false
 );
 

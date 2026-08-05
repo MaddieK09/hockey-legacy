@@ -170,9 +170,9 @@ rinkGraphics.lineStyle(3, 0xff3b30, 1);
 
 rinkGraphics.lineBetween(
     this.cameras.main.centerX - 165,
-    this.cameras.main.centerY - 298,
+this.cameras.main.centerY - 289,
     this.cameras.main.centerX + 165,
-    this.cameras.main.centerY - 298
+this.cameras.main.centerY - 289
 );
 
 // Bottom goal crease

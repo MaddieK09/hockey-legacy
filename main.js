@@ -3,7 +3,7 @@
 
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.0.98
+   VERSION 0.0.99
 
    CONTROLS
    - Left joystick: skate
@@ -585,7 +585,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.0.98",
+            "Version 0.0.99",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -2472,11 +2472,6 @@ function createSkaterBody(
         String(
             options.number ?? ""
         );
-
-    body.setSize(
-        44,
-        48
-    );
 
     return body;
 }

@@ -3,7 +3,7 @@
 
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.1.03
+   VERSION 0.1.04
 
    CONTROLS
    - Left joystick: skate
@@ -129,13 +129,13 @@ function create() {
 
     const rink = {
         width: Math.min(
-            350,
-            screenWidth - 12
+            370,
+            screenWidth - 8
         ),
 
         height: Math.min(
-            610,
-            screenHeight - 22
+            650,
+            screenHeight - 14
         ),
 
         cornerRadius: 55
@@ -593,7 +593,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.1.03",
+            "Version 0.1.04",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -1267,7 +1267,7 @@ function createScoreboard(scene) {
         state.rink;
 
     const scoreboardX =
-        rink.left + 48;
+        rink.centerX;
 
     const scoreboardY =
         rink.top + 24;
@@ -1276,23 +1276,23 @@ function createScoreboard(scene) {
         scene.add.rectangle(
             scoreboardX,
             scoreboardY,
-            72,
-            30,
+            216,
+            42,
             0x102d4e,
-            0.95
+            0.96
         )
             .setStrokeStyle(
-                2,
+                3,
                 0xffffff,
-                0.9
+                0.95
             )
             .setDepth(150);
 
     state.score.label =
         scene.add.text(
             scoreboardX,
-            scoreboardY - 21,
-            "SCORE",
+            scoreboardY - 24,
+            "3RD PERIOD",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -1304,43 +1304,93 @@ function createScoreboard(scene) {
                     "bold",
 
                 color:
-                    "#123d5f",
-
-                backgroundColor:
                     "#ffffff",
 
+                backgroundColor:
+                    "#1769d2",
+
                 padding: {
-                    left: 5,
-                    right: 5,
+                    left: 8,
+                    right: 8,
                     top: 2,
                     bottom: 2
                 }
             }
         )
             .setOrigin(0.5)
-            .setDepth(151);
+            .setDepth(152);
 
-    state.score.text =
+    state.score.homeLabel =
         scene.add.text(
-            scoreboardX,
+            scoreboardX - 70,
             scoreboardY,
-            "0 - 0",
+            "YOU",
             {
                 fontFamily:
                     "Arial, sans-serif",
 
                 fontSize:
-                    "18px",
+                    "10px",
 
                 fontStyle:
                     "bold",
 
                 color:
-                    "#ffffff"
+                    "#bfe9ff"
             }
         )
             .setOrigin(0.5)
-            .setDepth(151);
+            .setDepth(152);
+
+    state.score.awayLabel =
+        scene.add.text(
+            scoreboardX + 70,
+            scoreboardY,
+            "OPP",
+            {
+                fontFamily:
+                    "Arial, sans-serif",
+
+                fontSize:
+                    "10px",
+
+                fontStyle:
+                    "bold",
+
+                color:
+                    "#ffb8b8"
+            }
+        )
+            .setOrigin(0.5)
+            .setDepth(152);
+
+    state.score.text =
+        scene.add.text(
+            scoreboardX,
+            scoreboardY,
+            "0   -   0",
+            {
+                fontFamily:
+                    "Arial Black, Arial, sans-serif",
+
+                fontSize:
+                    "24px",
+
+                fontStyle:
+                    "bold",
+
+                color:
+                    "#ffffff",
+
+                stroke:
+                    "#081a2d",
+
+                strokeThickness:
+                    3
+            }
+        )
+            .setOrigin(0.5)
+            .setDepth(153);
 }
 
 function updateScoreboard(scene) {
@@ -1352,7 +1402,7 @@ function updateScoreboard(scene) {
     }
 
     state.score.text.setText(
-        `${state.score.top} - ${state.score.bottom}`
+        `${state.score.top}   -   ${state.score.bottom}`
     );
 }
 
@@ -1518,13 +1568,30 @@ function drawRink(
     scene,
     rink
 ) {
+    const shadow =
+        scene.add.graphics()
+            .setDepth(0);
+
+    shadow.fillStyle(
+        0x0b2440,
+        0.24
+    );
+
+    shadow.fillRoundedRect(
+        rink.left + 5,
+        rink.top + 7,
+        rink.width,
+        rink.height,
+        rink.cornerRadius
+    );
+
     const graphics =
         scene.add.graphics();
 
     graphics.setDepth(1);
 
     graphics.fillStyle(
-        0xf2f9fd,
+        0xeaf8ff,
         1
     );
 
@@ -1536,17 +1603,99 @@ function drawRink(
         rink.cornerRadius
     );
 
+    /*
+     * Code-generated ice texture inspired by arcade hockey games.
+     */
     graphics.fillStyle(
-        0xdff3ff,
-        0.18
+        0xffffff,
+        0.22
     );
 
-    graphics.fillRoundedRect(
-        rink.left + 8,
-        rink.centerY - 92,
-        rink.width - 16,
-        184,
-        22
+    for (
+        let stripe = 0;
+        stripe < 18;
+        stripe += 1
+    ) {
+        const y =
+            rink.top +
+            18 +
+            stripe *
+            (
+                (
+                    rink.height -
+                    36
+                ) /
+                18
+            );
+
+        graphics.fillRoundedRect(
+            rink.left + 10,
+            y,
+            rink.width - 20,
+            3,
+            2
+        );
+    }
+
+    graphics.lineStyle(
+        1,
+        0x73c7e8,
+        0.16
+    );
+
+    for (
+        let mark = 0;
+        mark < 42;
+        mark += 1
+    ) {
+        const markX =
+            rink.left +
+            16 +
+            (
+                mark * 73
+            ) %
+            Math.max(
+                1,
+                rink.width - 32
+            );
+
+        const markY =
+            rink.top +
+            22 +
+            (
+                mark * 109
+            ) %
+            Math.max(
+                1,
+                rink.height - 44
+            );
+
+        const length =
+            8 +
+            (
+                mark %
+                5
+            ) *
+            3;
+
+        graphics.lineBetween(
+            markX,
+            markY,
+            markX + length,
+            markY - 4
+        );
+    }
+
+    graphics.fillStyle(
+        0x66c6ee,
+        0.08
+    );
+
+    graphics.fillEllipse(
+        rink.centerX,
+        rink.centerY,
+        rink.width - 22,
+        180
     );
 
     drawMainLines(
@@ -1580,8 +1729,8 @@ function drawRink(
     );
 
     graphics.lineStyle(
-        4,
-        0x1d5fa7,
+        6,
+        0x15569a,
         1
     );
 
@@ -1591,6 +1740,23 @@ function drawRink(
         rink.width,
         rink.height,
         rink.cornerRadius
+    );
+
+    graphics.lineStyle(
+        2,
+        0xffffff,
+        0.85
+    );
+
+    graphics.strokeRoundedRect(
+        rink.left + 4,
+        rink.top + 4,
+        rink.width - 8,
+        rink.height - 8,
+        Math.max(
+            1,
+            rink.cornerRadius - 4
+        )
     );
 }
 
@@ -2296,8 +2462,8 @@ function createPixelSkaterTexture(
         return textureKey;
     }
 
-    const width = 52;
-    const height = 58;
+    const width = 60;
+    const height = 66;
 
     const texture =
         scene.textures.createCanvas(
@@ -2319,7 +2485,7 @@ function createPixelSkaterTexture(
         height
     );
 
-    const centerX = 25;
+    const centerX = 29;
 
     const strideFrames = [
         {
@@ -2398,10 +2564,10 @@ function createPixelSkaterTexture(
         "rgba(0,0,0,0.23)";
 
     context.fillRect(
-        centerX - 15,
-        38,
-        30,
-        8
+        centerX - 18,
+        43,
+        36,
+        9
     );
 
     /*
@@ -2505,17 +2671,17 @@ function createPixelSkaterTexture(
         jersey;
 
     context.fillRect(
-        centerX - 16,
-        13,
-        32,
-        9
+        centerX - 19,
+        14,
+        38,
+        10
     );
 
     context.fillRect(
-        centerX - 13,
-        22,
-        26,
-        8
+        centerX - 15,
+        24,
+        30,
+        9
     );
 
     context.fillStyle =
@@ -2535,16 +2701,16 @@ function createPixelSkaterTexture(
         jersey;
 
     context.fillRect(
-        centerX - 22,
-        15 +
+        centerX - 25,
+        16 +
             pose.leftArmY,
         7,
         16
     );
 
     context.fillRect(
-        centerX + 15,
-        15 +
+        centerX + 18,
+        16 +
             pose.rightArmY,
         7,
         16
@@ -2554,16 +2720,16 @@ function createPixelSkaterTexture(
         helmet;
 
     context.fillRect(
-        centerX - 23,
-        27 +
+        centerX - 27,
+        29 +
             pose.leftArmY,
         9,
         8
     );
 
     context.fillRect(
-        centerX + 14,
-        27 +
+        centerX + 18,
+        29 +
             pose.rightArmY,
         9,
         8
@@ -2740,7 +2906,7 @@ function createSkaterBody(
                 options.depth ??
                 20
             )
-            .setScale(0.96);
+            .setScale(1.02);
 
     body.skaterStyle =
         style;
@@ -2845,8 +3011,8 @@ function updateSkaterAnimation(
     const speedScale =
         sprinting &&
         speed > 8
-            ? 1.01
-            : 0.96;
+            ? 1.08
+            : 1.02;
 
     body.setScale(
         speedScale
@@ -6664,9 +6830,9 @@ function createPuck(scene) {
         scene.add.circle(
             state.rink.centerX,
             state.rink.centerY,
-            state.puckRadius + 4,
-            0xffe65b,
-            0.38
+            state.puckRadius + 6,
+            0x3ce6ff,
+            0.34
         )
             .setDepth(22);
 
@@ -7081,8 +7247,8 @@ function createContextualActionButton(
         scene.add.rectangle(
             x,
             y,
-            104,
-            36,
+            98,
+            34,
             0x2477c9,
             0.98
         )
@@ -9383,8 +9549,8 @@ function createMovementJoystick(
             x,
             y,
             movement.baseRadius,
-            0x17375e,
-            0.58
+            0x102d4e,
+            0.46
         )
             .setStrokeStyle(
                 2,
@@ -9467,8 +9633,8 @@ function createAimJoystick(
             x,
             y,
             aim.baseRadius,
-            0x8f2020,
-            0.60
+            0x9c2727,
+            0.48
         )
             .setStrokeStyle(
                 2,
@@ -10183,8 +10349,8 @@ function resetMovementJoystick(
         movement.base
     ) {
         movement.base.setFillStyle(
-            0x17375e,
-            0.58
+            0x102d4e,
+            0.46
         );
     }
 }
@@ -10398,8 +10564,8 @@ function resetAimJoystick(
         aim.base
     ) {
         aim.base.setFillStyle(
-            0x8f2020,
-            0.60
+            0x9c2727,
+            0.48
         );
     }
 
@@ -10472,12 +10638,12 @@ function updateAimGuide(scene) {
 
     const guideColor =
         hasPuck
-            ? 0xffd21f
-            : 0xff3b30;
+            ? 0x25d9ff
+            : 0xff5a4f;
 
     const guideLength =
-        40 +
-        aim.strength * 105;
+        70 +
+        aim.strength * 150;
 
     const endX =
         geometry.puckAnchorX +
@@ -10489,11 +10655,26 @@ function updateAimGuide(scene) {
         aim.directionY *
         guideLength;
 
+    /*
+     * Wide translucent glow, then a bright core.
+     */
     aim.guide.lineStyle(
-        2 +
-            aim.strength * 3,
+        13,
         guideColor,
-        0.88
+        0.16
+    );
+
+    aim.guide.lineBetween(
+        geometry.puckAnchorX,
+        geometry.puckAnchorY,
+        endX,
+        endY
+    );
+
+    aim.guide.lineStyle(
+        5,
+        guideColor,
+        0.82
     );
 
     aim.guide.lineBetween(
@@ -10505,7 +10686,7 @@ function updateAimGuide(scene) {
 
     aim.guide.fillStyle(
         guideColor,
-        0.95
+        0.98
     );
 
     aim.guide.fillTriangle(
@@ -10513,35 +10694,35 @@ function updateAimGuide(scene) {
         endY,
 
         endX -
-            aim.directionX * 11 -
-            aim.directionY * 6,
+            aim.directionX * 14 -
+            aim.directionY * 8,
 
         endY -
-            aim.directionY * 11 +
-            aim.directionX * 6,
+            aim.directionY * 14 +
+            aim.directionX * 8,
 
         endX -
-            aim.directionX * 11 +
-            aim.directionY * 6,
+            aim.directionX * 14 +
+            aim.directionY * 8,
 
         endY -
-            aim.directionY * 11 -
-            aim.directionX * 6
+            aim.directionY * 14 -
+            aim.directionX * 8
     );
 
-    const barWidth = 76;
-    const barHeight = 8;
+    const barWidth = 84;
+    const barHeight = 9;
 
     const barX =
         aim.centerX -
         barWidth / 2;
 
     const barY =
-        aim.centerY - 60;
+        aim.centerY - 57;
 
     aim.powerBar.fillStyle(
-        0x111111,
-        0.72
+        0x071525,
+        0.74
     );
 
     aim.powerBar.fillRoundedRect(
@@ -10549,12 +10730,12 @@ function updateAimGuide(scene) {
         barY,
         barWidth,
         barHeight,
-        4
+        5
     );
 
     aim.powerBar.fillStyle(
         guideColor,
-        0.95
+        0.98
     );
 
     aim.powerBar.fillRoundedRect(
@@ -10563,7 +10744,7 @@ function updateAimGuide(scene) {
         barWidth *
             aim.strength,
         barHeight,
-        4
+        5
     );
 }
 

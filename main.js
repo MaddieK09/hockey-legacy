@@ -3,7 +3,7 @@
 
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.1.02
+   VERSION 0.1.03
 
    CONTROLS
    - Left joystick: skate
@@ -202,6 +202,14 @@ function create() {
         },
 
         animationClock: 0,
+
+        visualEffects: {
+            snowParticles: [],
+            maximumSnowParticles: 28,
+            playerSnowTimer: 0,
+            teammateSnowTimers: new Map(),
+            opponentSnowTimers: new Map()
+        },
 
         defenseAssist: {
             range: 52,
@@ -585,7 +593,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.1.02",
+            "Version 0.1.03",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -1221,6 +1229,11 @@ function update(
             );
     }
 
+    updateSkateSnow(
+        this,
+        deltaSeconds
+    );
+
     updateAimGuide(
         this
     );
@@ -1644,6 +1657,18 @@ function drawCenterIce(
         rink.centerX,
         rink.centerY,
         4
+    );
+
+    graphics.lineStyle(
+        1,
+        0x17375e,
+        0.16
+    );
+
+    graphics.strokeCircle(
+        rink.centerX,
+        rink.centerY,
+        31
     );
 }
 
@@ -2271,8 +2296,8 @@ function createPixelSkaterTexture(
         return textureKey;
     }
 
-    const width = 40;
-    const height = 48;
+    const width = 52;
+    const height = 58;
 
     const texture =
         scene.textures.createCanvas(
@@ -2294,7 +2319,7 @@ function createPixelSkaterTexture(
         height
     );
 
-    const centerX = 20;
+    const centerX = 25;
 
     const strideFrames = [
         {
@@ -2303,15 +2328,17 @@ function createPixelSkaterTexture(
             leftLegY: 0,
             rightLegY: 0,
             leftArmY: 0,
-            rightArmY: 0
+            rightArmY: 0,
+            stickTilt: 0
         },
         {
-            leftLegX: -6,
+            leftLegX: -7,
             rightLegX: 5,
-            leftLegY: 2,
-            rightLegY: -1,
+            leftLegY: 3,
+            rightLegY: -2,
             leftArmY: -2,
-            rightArmY: 2
+            rightArmY: 3,
+            stickTilt: -2
         },
         {
             leftLegX: -3,
@@ -2319,15 +2346,17 @@ function createPixelSkaterTexture(
             leftLegY: 0,
             rightLegY: 0,
             leftArmY: 0,
-            rightArmY: 0
+            rightArmY: 0,
+            stickTilt: 0
         },
         {
             leftLegX: -5,
-            rightLegX: 6,
-            leftLegY: -1,
-            rightLegY: 2,
-            leftArmY: 2,
-            rightArmY: -2
+            rightLegX: 7,
+            leftLegY: -2,
+            rightLegY: 3,
+            leftArmY: 3,
+            rightArmY: -2,
+            stickTilt: 2
         }
     ];
 
@@ -2363,42 +2392,64 @@ function createPixelSkaterTexture(
         ).rgba;
 
     /*
-     * Soft shadow under the player.
+     * Compact oval shadow underneath each skater.
      */
     context.fillStyle =
-        "rgba(0,0,0,0.20)";
+        "rgba(0,0,0,0.23)";
 
     context.fillRect(
-        centerX - 12,
-        32,
-        24,
+        centerX - 15,
+        38,
+        30,
         8
     );
 
     /*
-     * Skates and legs.
+     * Longer, separated legs and clearly visible skate blades.
      */
     context.fillStyle =
-        "#111820";
+        pants;
 
     context.fillRect(
         centerX -
-            7 +
+            8 +
             pose.leftLegX,
-        28 +
+        31 +
             pose.leftLegY,
-        6,
-        13
+        7,
+        15
     );
 
     context.fillRect(
         centerX +
             1 +
             pose.rightLegX,
-        28 +
+        31 +
             pose.rightLegY,
-        6,
-        13
+        7,
+        15
+    );
+
+    context.fillStyle =
+        "#111820";
+
+    context.fillRect(
+        centerX -
+            9 +
+            pose.leftLegX,
+        43 +
+            pose.leftLegY,
+        9,
+        5
+    );
+
+    context.fillRect(
+        centerX +
+            pose.rightLegX,
+        43 +
+            pose.rightLegY,
+        9,
+        5
     );
 
     context.fillStyle =
@@ -2406,33 +2457,34 @@ function createPixelSkaterTexture(
 
     context.fillRect(
         centerX -
-            8 +
+            10 +
             pose.leftLegX,
-        39 +
+        47 +
             pose.leftLegY,
-        8,
-        3
+        11,
+        2
     );
 
     context.fillRect(
-        centerX +
+        centerX -
+            1 +
             pose.rightLegX,
-        39 +
+        47 +
             pose.rightLegY,
-        8,
-        3
+        11,
+        2
     );
 
     /*
-     * Hockey pants.
+     * Narrower waist and large hockey pants.
      */
     context.fillStyle =
         pants;
 
     context.fillRect(
-        centerX - 9,
-        24,
-        18,
+        centerX - 10,
+        27,
+        20,
         10
     );
 
@@ -2440,85 +2492,92 @@ function createPixelSkaterTexture(
         secondary;
 
     context.fillRect(
-        centerX - 9,
-        24,
-        18,
+        centerX - 10,
+        27,
+        20,
         2
     );
 
     /*
-     * Wide shoulder pads and jersey.
+     * Broad shoulder pads taper into a narrower torso.
      */
     context.fillStyle =
         jersey;
 
     context.fillRect(
-        centerX - 14,
-        12,
-        28,
-        16
+        centerX - 16,
+        13,
+        32,
+        9
+    );
+
+    context.fillRect(
+        centerX - 13,
+        22,
+        26,
+        8
     );
 
     context.fillStyle =
         secondary;
 
     context.fillRect(
-        centerX - 14,
-        17,
-        28,
+        centerX - 16,
+        18,
+        32,
         4
     );
 
     /*
-     * Arms and gloves counter-swing with the stride.
+     * Counter-swinging arms and larger gloves.
      */
     context.fillStyle =
         jersey;
 
     context.fillRect(
-        centerX - 19,
+        centerX - 22,
         15 +
             pose.leftArmY,
-        6,
-        14
+        7,
+        16
     );
 
     context.fillRect(
-        centerX + 13,
+        centerX + 15,
         15 +
             pose.rightArmY,
-        6,
-        14
+        7,
+        16
     );
 
     context.fillStyle =
         helmet;
 
     context.fillRect(
-        centerX - 20,
-        25 +
+        centerX - 23,
+        27 +
             pose.leftArmY,
-        7,
-        6
+        9,
+        8
     );
 
     context.fillRect(
-        centerX + 13,
-        25 +
+        centerX + 14,
+        27 +
             pose.rightArmY,
-        7,
-        6
+        9,
+        8
     );
 
     /*
-     * Head, helmet and visor.
+     * Head, rounded helmet, and visor.
      */
     context.fillStyle =
         skin;
 
     context.fillRect(
         centerX - 5,
-        6,
+        7,
         10,
         8
     );
@@ -2527,19 +2586,19 @@ function createPixelSkaterTexture(
         helmet;
 
     context.fillRect(
-        centerX - 7,
+        centerX - 8,
         2,
-        14,
-        7
+        16,
+        8
     );
 
     context.fillStyle =
         secondary;
 
     context.fillRect(
-        centerX - 7,
+        centerX - 8,
         2,
-        14,
+        16,
         2
     );
 
@@ -2547,24 +2606,70 @@ function createPixelSkaterTexture(
         "#bde7f7";
 
     context.fillRect(
-        centerX - 4,
-        9,
-        8,
+        centerX - 5,
+        10,
+        10,
         2
     );
 
     /*
-     * Dark number plate gives the jersey a real uniform look.
+     * Chest number plate.
      */
     context.fillStyle =
-        "rgba(5,16,30,0.72)";
+        "rgba(5,16,30,0.75)";
 
     context.fillRect(
-        centerX - 5,
-        22,
-        10,
-        6
+        centerX - 6,
+        23,
+        12,
+        7
     );
+
+    /*
+     * Long diagonal hockey stick, visible from a bird's-eye view.
+     * The blade points ahead of the player instead of straight upward.
+     */
+    context.strokeStyle =
+        "#6e4524";
+
+    context.lineWidth = 3;
+
+    context.beginPath();
+
+    context.moveTo(
+        centerX + 16,
+        27 +
+            pose.rightArmY
+    );
+
+    context.lineTo(
+        centerX + 24 +
+            pose.stickTilt,
+        8
+    );
+
+    context.stroke();
+
+    context.strokeStyle =
+        "#1b1b1b";
+
+    context.lineWidth = 4;
+
+    context.beginPath();
+
+    context.moveTo(
+        centerX + 24 +
+            pose.stickTilt,
+        8
+    );
+
+    context.lineTo(
+        centerX + 17 +
+            pose.stickTilt,
+        5
+    );
+
+    context.stroke();
 
     texture.refresh();
 
@@ -2635,7 +2740,7 @@ function createSkaterBody(
                 options.depth ??
                 20
             )
-            .setScale(0.86);
+            .setScale(0.96);
 
     body.skaterStyle =
         style;
@@ -2740,8 +2845,8 @@ function updateSkaterAnimation(
     const speedScale =
         sprinting &&
         speed > 8
-            ? 0.91
-            : 0.86;
+            ? 1.01
+            : 0.96;
 
     body.setScale(
         speedScale
@@ -5311,65 +5416,6 @@ function updatePlayerStick(scene) {
 
     state.playerStick.clear();
 
-    state.playerStick.lineStyle(
-        3,
-        0x6e4524,
-        1
-    );
-
-    state.playerStick.lineBetween(
-        handX,
-        handY,
-        geometry.bladeStartX,
-        geometry.bladeStartY
-    );
-
-    state.playerStick.lineStyle(
-        4,
-        0x222222,
-        1
-    );
-
-    state.playerStick.lineBetween(
-        geometry.bladeStartX,
-        geometry.bladeStartY,
-        geometry.bladeEndX,
-        geometry.bladeEndY
-    );
-
-    const playerSpeed =
-        Math.sqrt(
-            state.playerVelocityX *
-                state.playerVelocityX +
-            state.playerVelocityY *
-                state.playerVelocityY
-        );
-
-    if (
-        playerSpeed > 10
-    ) {
-        const pulse =
-            0.82 +
-            Math.abs(
-                Math.sin(
-                    state.animationClock *
-                    (
-                        state.sprinting
-                            ? 15
-                            : 10
-                    )
-                )
-            ) *
-            0.18;
-
-        state.playerStick
-            .setAlpha(
-                pulse
-            );
-    } else {
-        state.playerStick
-            .setAlpha(1);
-    }
 }
 
 function updateTeammateStick(
@@ -5391,32 +5437,6 @@ function updateTeammateStick(
         geometry.perpendicularY * 5;
 
     teammate.stick.clear();
-
-    teammate.stick.lineStyle(
-        3,
-        0x6e4524,
-        1
-    );
-
-    teammate.stick.lineBetween(
-        handX,
-        handY,
-        geometry.bladeStartX,
-        geometry.bladeStartY
-    );
-
-    teammate.stick.lineStyle(
-        4,
-        0x222222,
-        1
-    );
-
-    teammate.stick.lineBetween(
-        geometry.bladeStartX,
-        geometry.bladeStartY,
-        geometry.bladeEndX,
-        geometry.bladeEndY
-    );
 }
 
 /* =========================================================
@@ -9073,6 +9093,231 @@ function updatePuckMovement(
     }
 }
 
+
+/* =========================================================
+   SKATE-SNOW VISUAL EFFECTS
+========================================================= */
+
+function createSkateSnowParticle(
+    scene,
+    x,
+    y,
+    velocityX,
+    velocityY
+) {
+    const effects =
+        scene.gameState
+            .visualEffects;
+
+    if (
+        effects.snowParticles.length >=
+        effects.maximumSnowParticles
+    ) {
+        const oldest =
+            effects.snowParticles.shift();
+
+        if (
+            oldest &&
+            oldest.circle
+        ) {
+            oldest.circle.destroy();
+        }
+    }
+
+    const circle =
+        scene.add.circle(
+            x,
+            y,
+            Phaser.Math.FloatBetween(
+                1.4,
+                2.6
+            ),
+            0xffffff,
+            Phaser.Math.FloatBetween(
+                0.45,
+                0.8
+            )
+        )
+            .setDepth(17);
+
+    effects.snowParticles.push({
+        circle,
+
+        velocityX:
+            velocityX *
+            -0.05 +
+            Phaser.Math.FloatBetween(
+                -14,
+                14
+            ),
+
+        velocityY:
+            velocityY *
+            -0.05 +
+            Phaser.Math.FloatBetween(
+                -14,
+                14
+            ),
+
+        life:
+            Phaser.Math.FloatBetween(
+                0.22,
+                0.42
+            ),
+
+        maximumLife:
+            0.42
+    });
+}
+
+function updateSkateSnow(
+    scene,
+    deltaSeconds
+) {
+    const state =
+        scene.gameState;
+
+    const effects =
+        state.visualEffects;
+
+    const playerSpeed =
+        Math.sqrt(
+            state.playerVelocityX *
+                state.playerVelocityX +
+            state.playerVelocityY *
+                state.playerVelocityY
+        );
+
+    effects.playerSnowTimer -=
+        deltaSeconds;
+
+    if (
+        playerSpeed > 85 &&
+        effects.playerSnowTimer <= 0
+    ) {
+        effects.playerSnowTimer =
+            state.sprinting
+                ? 0.045
+                : 0.08;
+
+        createSkateSnowParticle(
+            scene,
+            state.player.x -
+                state.facingX * 15,
+            state.player.y -
+                state.facingY * 15,
+            state.playerVelocityX,
+            state.playerVelocityY
+        );
+    }
+
+    for (
+        const skater
+        of [
+            ...state.teammates,
+            ...state.opponents
+        ]
+    ) {
+        const speed =
+            Math.sqrt(
+                skater.velocityX *
+                    skater.velocityX +
+                skater.velocityY *
+                    skater.velocityY
+            );
+
+        const timers =
+            skater.isOpponent
+                ? effects.opponentSnowTimers
+                : effects.teammateSnowTimers;
+
+        let timer =
+            timers.get(
+                skater
+            ) || 0;
+
+        timer -=
+            deltaSeconds;
+
+        if (
+            speed > 90 &&
+            timer <= 0
+        ) {
+            timer =
+                Phaser.Math.FloatBetween(
+                    0.08,
+                    0.13
+                );
+
+            createSkateSnowParticle(
+                scene,
+                skater.body.x -
+                    skater.facingX * 14,
+                skater.body.y -
+                    skater.facingY * 14,
+                skater.velocityX,
+                skater.velocityY
+            );
+        }
+
+        timers.set(
+            skater,
+            timer
+        );
+    }
+
+    for (
+        let index =
+            effects.snowParticles.length - 1;
+
+        index >= 0;
+
+        index -= 1
+    ) {
+        const particle =
+            effects.snowParticles[index];
+
+        particle.life -=
+            deltaSeconds;
+
+        if (
+            particle.life <= 0
+        ) {
+            particle.circle.destroy();
+
+            effects.snowParticles.splice(
+                index,
+                1
+            );
+
+            continue;
+        }
+
+        particle.circle.x +=
+            particle.velocityX *
+            deltaSeconds;
+
+        particle.circle.y +=
+            particle.velocityY *
+            deltaSeconds;
+
+        particle.velocityX *=
+            0.9;
+
+        particle.velocityY *=
+            0.9;
+
+        particle.circle.setAlpha(
+            Phaser.Math.Clamp(
+                particle.life /
+                particle.maximumLife,
+                0,
+                1
+            ) * 0.7
+        );
+    }
+}
+
 /* =========================================================
    MOBILE CONTROLS
 ========================================================= */
@@ -9139,7 +9384,7 @@ function createMovementJoystick(
             y,
             movement.baseRadius,
             0x17375e,
-            0.72
+            0.58
         )
             .setStrokeStyle(
                 2,
@@ -9223,7 +9468,7 @@ function createAimJoystick(
             y,
             aim.baseRadius,
             0x8f2020,
-            0.74
+            0.60
         )
             .setStrokeStyle(
                 2,
@@ -9939,7 +10184,7 @@ function resetMovementJoystick(
     ) {
         movement.base.setFillStyle(
             0x17375e,
-            0.72
+            0.58
         );
     }
 }
@@ -10154,7 +10399,7 @@ function resetAimJoystick(
     ) {
         aim.base.setFillStyle(
             0x8f2020,
-            0.74
+            0.60
         );
     }
 

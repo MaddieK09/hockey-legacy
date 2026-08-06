@@ -3,7 +3,7 @@
 
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.0.79
+   VERSION 0.0.80
 
    CONTROLS
    - Left joystick: skate
@@ -258,6 +258,24 @@ function create() {
 
         keyboard: null,
 
+        playerStats: {
+            enabled: false,
+
+            shots: 0,
+            goals: 0,
+            assists: 0,
+            points: 0,
+            passes: 0,
+            savesAgainst: 0,
+
+            panel: null,
+            title: null,
+            text: null,
+
+            lastShooter: null,
+            lastPasser: null
+        },
+
         offensiveGoal: {
             x: rink.centerX,
             y: rink.top + 44
@@ -458,8 +476,11 @@ function createMainMenu(scene) {
     const versionY =
         titleY + 78;
 
+    const toggleY =
+        versionY + 70;
+
     const buttonY =
-        versionY + 115;
+        versionY + 145;
 
     const titleText =
         scene.add.text(
@@ -496,7 +517,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.0.79",
+            "Version 0.0.80",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -513,6 +534,107 @@ function createMainMenu(scene) {
         )
             .setOrigin(0.5)
             .setDepth(300);
+
+    const statsToggleButton =
+        scene.add.rectangle(
+            rink.centerX,
+            toggleY,
+            210,
+            46,
+            0x596a7b,
+            0.96
+        )
+            .setStrokeStyle(
+                2,
+                0xffffff,
+                0.95
+            )
+            .setDepth(300)
+            .setInteractive({
+                useHandCursor: true
+            });
+
+    const statsToggleText =
+        scene.add.text(
+            rink.centerX,
+            toggleY,
+            "PLAYER STATS: OFF",
+            {
+                fontFamily:
+                    "Arial, sans-serif",
+
+                fontSize:
+                    "18px",
+
+                fontStyle:
+                    "bold",
+
+                color:
+                    "#ffffff"
+            }
+        )
+            .setOrigin(0.5)
+            .setDepth(301)
+            .setInteractive({
+                useHandCursor: true
+            });
+
+    const togglePlayerStats = (
+        pointer,
+        localX,
+        localY,
+        event
+    ) => {
+        if (state.gameStarted) {
+            return;
+        }
+
+        state.playerStats.enabled =
+            !state.playerStats.enabled;
+
+        if (
+            state.playerStats.enabled
+        ) {
+            statsToggleButton
+                .setFillStyle(
+                    0x35a85d,
+                    1
+                );
+
+            statsToggleText
+                .setText(
+                    "PLAYER STATS: ON"
+                );
+        } else {
+            statsToggleButton
+                .setFillStyle(
+                    0x596a7b,
+                    0.96
+                );
+
+            statsToggleText
+                .setText(
+                    "PLAYER STATS: OFF"
+                );
+        }
+
+        if (
+            event &&
+            event.stopPropagation
+        ) {
+            event.stopPropagation();
+        }
+    };
+
+    statsToggleButton.on(
+        "pointerdown",
+        togglePlayerStats
+    );
+
+    statsToggleText.on(
+        "pointerdown",
+        togglePlayerStats
+    );
 
     const button =
         scene.add.rectangle(
@@ -573,11 +695,23 @@ function createMainMenu(scene) {
         button.disableInteractive();
         buttonText.disableInteractive();
 
+        statsToggleButton
+            .disableInteractive();
+
+        statsToggleText
+            .disableInteractive();
+
         titleText.setVisible(false);
         versionText.setVisible(false);
 
         button.setVisible(false);
         buttonText.setVisible(false);
+
+        statsToggleButton
+            .setVisible(false);
+
+        statsToggleText
+            .setVisible(false);
 
         drawRink(
             scene,
@@ -589,6 +723,10 @@ function createMainMenu(scene) {
         );
 
         createScoreboard(
+            scene
+        );
+
+        createPlayerStatsDisplay(
             scene
         );
 
@@ -893,6 +1031,160 @@ function updateScoreboard(scene) {
 
     state.score.text.setText(
         `${state.score.top} - ${state.score.bottom}`
+    );
+}
+
+/* =========================================================
+   PLAYER STATS DISPLAY
+========================================================= */
+
+function createPlayerStatsDisplay(
+    scene
+) {
+    const state =
+        scene.gameState;
+
+    const stats =
+        state.playerStats;
+
+    if (
+        !stats.enabled
+    ) {
+        return;
+    }
+
+    const rink =
+        state.rink;
+
+    const panelX =
+        rink.right - 51;
+
+    const panelY =
+        rink.top + 38;
+
+    stats.panel =
+        scene.add.rectangle(
+            panelX,
+            panelY,
+            94,
+            62,
+            0x102d4e,
+            0.92
+        )
+            .setStrokeStyle(
+                2,
+                0xffffff,
+                0.9
+            )
+            .setDepth(150);
+
+    stats.title =
+        scene.add.text(
+            panelX,
+            panelY - 23,
+            "PLAYER",
+            {
+                fontFamily:
+                    "Arial, sans-serif",
+
+                fontSize:
+                    "9px",
+
+                fontStyle:
+                    "bold",
+
+                color:
+                    "#ffffff"
+            }
+        )
+            .setOrigin(0.5)
+            .setDepth(151);
+
+    stats.text =
+        scene.add.text(
+            panelX,
+            panelY + 6,
+            "",
+            {
+                fontFamily:
+                    "Arial, sans-serif",
+
+                fontSize:
+                    "10px",
+
+                fontStyle:
+                    "bold",
+
+                color:
+                    "#ffffff",
+
+                align:
+                    "center",
+
+                lineSpacing:
+                    1
+            }
+        )
+            .setOrigin(0.5)
+            .setDepth(151);
+
+    updatePlayerStatsDisplay(
+        scene
+    );
+}
+
+function updatePlayerStatsDisplay(
+    scene
+) {
+    const stats =
+        scene.gameState
+            .playerStats;
+
+    stats.points =
+        stats.goals +
+        stats.assists;
+
+    if (
+        !stats.enabled ||
+        !stats.text
+    ) {
+        return;
+    }
+
+    stats.text.setText(
+        `G ${stats.goals}   A ${stats.assists}   P ${stats.points}\n` +
+        `S ${stats.shots}   PAS ${stats.passes}`
+    );
+}
+
+function recordPlayerShot(
+    scene
+) {
+    const stats =
+        scene.gameState
+            .playerStats;
+
+    stats.shots += 1;
+    stats.lastShooter = "player";
+    stats.lastPasser = null;
+
+    updatePlayerStatsDisplay(
+        scene
+    );
+}
+
+function recordPlayerPass(
+    scene
+) {
+    const stats =
+        scene.gameState
+            .playerStats;
+
+    stats.passes += 1;
+    stats.lastPasser = "player";
+
+    updatePlayerStatsDisplay(
+        scene
     );
 }
 
@@ -4102,6 +4394,10 @@ function passPuckToTeammate(
         return;
     }
 
+    recordPlayerPass(
+        scene
+    );
+
     const start =
         getPlayerStickGeometry(
             state
@@ -4870,6 +5166,9 @@ function shootFromTeammate(
         return;
     }
 
+    state.playerStats.lastShooter =
+        teammate;
+
     const geometry =
         getTeammateStickGeometry(
             teammate
@@ -4962,6 +5261,14 @@ function passFromTeammate(
             teammate
     ) {
         return;
+    }
+
+    if (
+        state.playerStats.lastPasser !==
+        "player"
+    ) {
+        state.playerStats.lastPasser =
+            teammate;
     }
 
     const start =
@@ -5111,6 +5418,10 @@ function shootPuckInDirection(
 
     directionY /=
         directionLength;
+
+    recordPlayerShot(
+        scene
+    );
 
     const geometry =
         getPlayerStickGeometry(
@@ -6909,6 +7220,29 @@ function registerGoal(
 
     state.playStopped = true;
 
+    if (
+        scoredSide === "top"
+    ) {
+        if (
+            state.playerStats.lastShooter ===
+            "player"
+        ) {
+            state.playerStats.goals += 1;
+        } else if (
+            state.playerStats.lastPasser ===
+            "player"
+        ) {
+            state.playerStats.assists += 1;
+        }
+
+        updatePlayerStatsDisplay(
+            scene
+        );
+    }
+
+    state.playerStats.lastShooter = null;
+    state.playerStats.lastPasser = null;
+
     presentation.active = true;
     presentation.scoredSide =
         scoredSide;
@@ -7364,6 +7698,9 @@ function resetPlayersForCenterFaceoff(
 
     state.passCall.active = false;
     state.passCall.displayTimer = 0;
+
+    state.playerStats.lastShooter = null;
+    state.playerStats.lastPasser = null;
 
     state.actionButton.cooldown = 0;
 

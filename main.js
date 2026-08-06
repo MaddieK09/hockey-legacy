@@ -1,6 +1,6 @@
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.0.71
+   VERSION 0.0.72
 
    CONTROLS
    - Left joystick: skate
@@ -140,6 +140,7 @@ function create() {
 
         goalie: {
             body: null,
+            mask: null,
             pads: null,
             glove: null,
             blocker: null,
@@ -147,18 +148,27 @@ function create() {
             label: null,
 
             x: rink.centerX,
-            y: rink.top + 61,
+            y: rink.top + 63,
 
             homeX: rink.centerX,
-            homeY: rink.top + 61,
+            homeY: rink.top + 63,
 
             velocityX: 0,
-            maximumSpeed: 118,
-            acceleration: 520,
-            deceleration: 680,
+            maximumSpeed: 92,
+            acceleration: 390,
+            deceleration: 540,
 
-            halfWidth: 19,
-            halfHeight: 10,
+            visualWidth: 30,
+            visualHeight: 26,
+
+            saveHalfWidth: 12,
+            saveHalfHeight: 12,
+
+            reactionTimer: 0,
+            reactionDelay: 0.12,
+            trackedTargetX: rink.centerX,
+            trackingError: 0,
+
             saveCooldown: 0,
             saveFlash: null
         },
@@ -435,7 +445,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.0.71",
+            "Version 0.0.72",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -2686,27 +2696,18 @@ function createGoalie(scene) {
     const goalie =
         state.goalie;
 
-    goalie.pads =
+    /*
+     * The goalie is deliberately boxier than a skater.
+     * The large square is the equipment silhouette, while
+     * the actual save area is slightly smaller so shots can
+     * still beat the goalie along the posts.
+     */
+    goalie.body =
         scene.add.rectangle(
             goalie.x,
-            goalie.y + 7,
-            38,
-            12,
-            0xffffff,
-            1
-        )
-            .setStrokeStyle(
-                2,
-                0x17375e,
-                1
-            )
-            .setDepth(25);
-
-    goalie.body =
-        scene.add.circle(
-            goalie.x,
-            goalie.y - 2,
-            11,
+            goalie.y,
+            goalie.visualWidth,
+            goalie.visualHeight,
             0x8f2020,
             1
         )
@@ -2716,6 +2717,38 @@ function createGoalie(scene) {
                 1
             )
             .setDepth(26);
+
+    goalie.mask =
+        scene.add.rectangle(
+            goalie.x,
+            goalie.y - 7,
+            14,
+            8,
+            0xd8e5ef,
+            1
+        )
+            .setStrokeStyle(
+                1,
+                0x17375e,
+                1
+            )
+            .setDepth(27);
+
+    goalie.pads =
+        scene.add.rectangle(
+            goalie.x,
+            goalie.y + 8,
+            27,
+            8,
+            0xffffff,
+            1
+        )
+            .setStrokeStyle(
+                1,
+                0x17375e,
+                1
+            )
+            .setDepth(27);
 
     goalie.glove =
         scene.add.circle(
@@ -2737,7 +2770,7 @@ function createGoalie(scene) {
             goalie.x + 18,
             goalie.y,
             9,
-            9,
+            10,
             0x8f2020,
             1
         )
@@ -2755,7 +2788,7 @@ function createGoalie(scene) {
     goalie.label =
         scene.add.text(
             goalie.x,
-            goalie.y - 24,
+            goalie.y - 25,
             "G",
             {
                 fontFamily:
@@ -2842,61 +2875,114 @@ function updateGoalie(
                 deltaSeconds
         );
 
-    let targetX =
-        goalie.homeX;
+    goalie.reactionTimer -=
+        deltaSeconds;
 
-    const puckIsLoose =
-        !state.possession.owner;
-
-    const puckIsAttacking =
-        state.puck.y <
-        state.rink.centerY + 40;
-
+    /*
+     * The goalie does not read the player's input instantly.
+     * It updates its guess several times per second, creating
+     * reaction delay and making dekes and quick shots useful.
+     */
     if (
-        puckIsLoose &&
-        puckIsAttacking
+        goalie.reactionTimer <= 0
     ) {
-        const velocityLead =
-            Phaser.Math.Clamp(
-                state.puckVelocityX * 0.08,
-                -16,
-                16
+        goalie.reactionTimer =
+            goalie.reactionDelay +
+            Phaser.Math.FloatBetween(
+                -0.025,
+                0.045
             );
 
-        targetX =
-            state.puck.x +
-            velocityLead;
-    } else if (
-        state.possession.owner
-    ) {
-        const owner =
-            state.possession.owner;
+        let desiredTargetX =
+            goalie.homeX;
 
-        const ownerX =
-            owner === state.player
-                ? state.player.x
-                : owner.body.x;
+        const puckIsLoose =
+            !state.possession.owner;
 
-        targetX =
-            ownerX;
+        const puckIsAttacking =
+            state.puck.y <
+            state.rink.centerY + 45;
+
+        if (
+            puckIsLoose &&
+            puckIsAttacking &&
+            state.puckVelocityY < -12
+        ) {
+            const goalieLineY =
+                goalie.y +
+                goalie.saveHalfHeight;
+
+            const secondsToGoalie =
+                (
+                    goalieLineY -
+                    state.puck.y
+                ) /
+                state.puckVelocityY;
+
+            if (
+                secondsToGoalie > 0 &&
+                secondsToGoalie < 1.6
+            ) {
+                desiredTargetX =
+                    state.puck.x +
+                    state.puckVelocityX *
+                    secondsToGoalie;
+            } else {
+                desiredTargetX =
+                    state.puck.x;
+            }
+        } else if (
+            state.possession.owner
+        ) {
+            const owner =
+                state.possession.owner;
+
+            desiredTargetX =
+                owner === state.player
+                    ? state.player.x
+                    : owner.body.x;
+        }
+
+        /* Small tracking mistakes stop the goalie being robotic. */
+        goalie.trackingError =
+            Phaser.Math.FloatBetween(
+                -7,
+                7
+            );
+
+        goalie.trackedTargetX =
+            Phaser.Math.Clamp(
+                desiredTargetX +
+                    goalie.trackingError,
+                state.rink.centerX - 21,
+                state.rink.centerX + 21
+            );
     }
 
-    targetX =
-        Phaser.Math.Clamp(
-            targetX,
-            state.rink.centerX - 25,
-            state.rink.centerX + 25
-        );
-
     const difference =
-        targetX -
+        goalie.trackedTargetX -
         goalie.x;
 
-    const desiredVelocity =
+    let desiredVelocity = 0;
+
+    if (
         Math.abs(difference) > 1.5
-            ? Math.sign(difference) *
-                goalie.maximumSpeed
-            : 0;
+    ) {
+        desiredVelocity =
+            Math.sign(difference) *
+            goalie.maximumSpeed;
+
+        if (
+            Math.abs(difference) < 13
+        ) {
+            desiredVelocity *=
+                Phaser.Math.Clamp(
+                    Math.abs(difference) / 13,
+                    0.25,
+                    1
+                );
+        }
+    }
 
     const changeRate =
         desiredVelocity === 0
@@ -2918,8 +3004,8 @@ function updateGoalie(
     goalie.x =
         Phaser.Math.Clamp(
             goalie.x,
-            state.rink.centerX - 25,
-            state.rink.centerX + 25
+            state.rink.centerX - 21,
+            state.rink.centerX + 21
         );
 
     goalie.y =
@@ -2938,14 +3024,19 @@ function updateGoalieVisuals(scene) {
         return;
     }
 
-    goalie.pads.setPosition(
-        goalie.x,
-        goalie.y + 7
-    );
-
     goalie.body.setPosition(
         goalie.x,
-        goalie.y - 2
+        goalie.y
+    );
+
+    goalie.mask.setPosition(
+        goalie.x,
+        goalie.y - 7
+    );
+
+    goalie.pads.setPosition(
+        goalie.x,
+        goalie.y + 8
     );
 
     goalie.glove.setPosition(
@@ -2960,7 +3051,7 @@ function updateGoalieVisuals(scene) {
 
     goalie.label.setPosition(
         goalie.x,
-        goalie.y - 24
+        goalie.y - 25
     );
 
     goalie.saveFlash.setPosition(
@@ -2978,9 +3069,9 @@ function updateGoalieVisuals(scene) {
 
     goalie.stick.lineBetween(
         goalie.x + 15,
-        goalie.y + 2,
+        goalie.y + 3,
         goalie.x + 21,
-        goalie.y + 18
+        goalie.y + 19
     );
 
     goalie.stick.lineStyle(
@@ -2991,9 +3082,9 @@ function updateGoalieVisuals(scene) {
 
     goalie.stick.lineBetween(
         goalie.x + 21,
-        goalie.y + 18,
-        goalie.x + 11,
-        goalie.y + 20
+        goalie.y + 19,
+        goalie.x + 10,
+        goalie.y + 21
     );
 }
 
@@ -3020,19 +3111,18 @@ function handleGoalieSave(
     const puck =
         state.puck;
 
-    const movingTowardTopGoal =
-        state.puckVelocityY < -8;
-
-    if (!movingTowardTopGoal) {
+    if (
+        state.puckVelocityY >= -8
+    ) {
         return false;
     }
 
     const collisionHalfWidth =
-        goalie.halfWidth +
+        goalie.saveHalfWidth +
         state.puckRadius;
 
     const collisionHalfHeight =
-        goalie.halfHeight +
+        goalie.saveHalfHeight +
         state.puckRadius;
 
     const insideX =
@@ -3042,9 +3132,11 @@ function handleGoalieSave(
 
     const crossedGoalieY =
         previousY >=
-            goalie.y - collisionHalfHeight &&
+            goalie.y -
+            collisionHalfHeight &&
         puck.y <=
-            goalie.y + collisionHalfHeight;
+            goalie.y +
+            collisionHalfHeight;
 
     if (
         !insideX ||
@@ -3071,6 +3163,62 @@ function handleGoalieSave(
                 state.puckVelocityY
         );
 
+    /*
+     * Saves are likely but never automatic. Edge shots, hard
+     * shots and a goalie moving the wrong direction all lower
+     * the chance. This is what makes scoring possible.
+     */
+    const edgeDifficulty =
+        Math.abs(offset) * 0.34;
+
+    const speedDifficulty =
+        Phaser.Math.Clamp(
+            (
+                incomingSpeed - 260
+            ) / 700,
+            0,
+            0.22
+        );
+
+    const movingWrongWay =
+        Math.sign(
+            state.puckVelocityX
+        ) !== 0 &&
+        Math.sign(
+            goalie.velocityX
+        ) !== 0 &&
+        Math.sign(
+            state.puckVelocityX
+        ) !==
+        Math.sign(
+            goalie.velocityX
+        );
+
+    const movementPenalty =
+        movingWrongWay
+            ? 0.12
+            : 0;
+
+    const saveChance =
+        Phaser.Math.Clamp(
+            0.84 -
+                edgeDifficulty -
+                speedDifficulty -
+                movementPenalty,
+            0.28,
+            0.9
+        );
+
+    if (
+        Math.random() > saveChance
+    ) {
+        /* The puck beats the goalie and continues to the net. */
+        goalie.saveCooldown =
+            0.08;
+
+        return false;
+    }
+
     puck.setPosition(
         goalie.x +
             offset *
@@ -3081,21 +3229,22 @@ function handleGoalieSave(
     );
 
     state.puckVelocityX =
-        state.puckVelocityX * 0.28 +
+        state.puckVelocityX * 0.24 +
         offset *
             Math.max(
-                75,
-                incomingSpeed * 0.48
-            );
+                70,
+                incomingSpeed * 0.45
+            ) +
+        goalie.velocityX * 0.18;
 
     state.puckVelocityY =
         Math.max(
-            120,
-            incomingSpeed * 0.52
+            105,
+            incomingSpeed * 0.48
         );
 
     goalie.saveCooldown =
-        0.12;
+        0.13;
 
     showGoalieSaveFlash(
         scene
@@ -3158,6 +3307,10 @@ function resetGoalie(scene) {
 
     goalie.velocityX = 0;
     goalie.saveCooldown = 0;
+    goalie.reactionTimer = 0;
+    goalie.trackedTargetX =
+        goalie.homeX;
+    goalie.trackingError = 0;
 
     if (goalie.saveFlash) {
         scene.tweens.killTweensOf(

@@ -3,7 +3,7 @@
 
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.0.96
+   VERSION 0.0.97
 
    CONTROLS
    - Left joystick: skate
@@ -585,7 +585,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.0.96",
+            "Version 0.0.97",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -617,10 +617,7 @@ function createMainMenu(scene) {
                 0xffffff,
                 0.95
             )
-            .setDepth(300)
-            .setInteractive({
-                useHandCursor: true
-            });
+            .setDepth(300);
 
     const statsToggleText =
         scene.add.text(
@@ -691,10 +688,6 @@ function createMainMenu(scene) {
         }
     };
 
-    statsToggleButton.on(
-        "pointerup",
-        togglePlayerStats
-    );
 
     const statsToggleHint =
         scene.add.text(
@@ -732,10 +725,7 @@ function createMainMenu(scene) {
                 0xffffff,
                 1
             )
-            .setDepth(300)
-            .setInteractive({
-                useHandCursor: true
-            });
+            .setDepth(300);
 
     const buttonText =
         scene.add.text(
@@ -773,11 +763,6 @@ function createMainMenu(scene) {
 
         try {
             state.gameStarted = true;
-
-            button.disableInteractive();
-
-            statsToggleButton
-                .disableInteractive();
 
             titleText.setVisible(false);
             versionText.setVisible(false);
@@ -860,19 +845,13 @@ function createMainMenu(scene) {
             state.gameStarted = false;
 
             button
-                .setVisible(true)
-                .setInteractive({
-                    useHandCursor: true
-                });
+                .setVisible(true);
 
             buttonText
                 .setVisible(true);
 
             statsToggleButton
-                .setVisible(true)
-                .setInteractive({
-                    useHandCursor: true
-                });
+                .setVisible(true);
 
             statsToggleText
                 .setVisible(true);
@@ -916,35 +895,75 @@ function createMainMenu(scene) {
         }
     };
 
-    button.on(
-        "pointerup",
-        startGame
-    );
 
     /*
-     * iPhone Safari fallback:
-     * Phaser occasionally misses object-level taps after a large script
-     * replacement. This scene-level handler checks the menu rectangles
-     * directly, so PLAY and PLAYER STATS remain tappable.
+     * One menu input path only.
+     *
+     * Earlier builds had both object-level and scene-level handlers.
+     * On iPhone that could process one tap twice, making the stats toggle
+     * appear broken. Using pointerdown here also responds immediately.
      */
+    let menuTapLocked = false;
+
     scene.input.on(
-        "pointerup",
+        "pointerdown",
         pointer => {
             if (
-                state.gameStarted
+                state.gameStarted ||
+                menuTapLocked
             ) {
                 return;
             }
 
+            const pointerX =
+                Number.isFinite(
+                    pointer.worldX
+                )
+                    ? pointer.worldX
+                    : pointer.x;
+
+            const pointerY =
+                Number.isFinite(
+                    pointer.worldY
+                )
+                    ? pointer.worldY
+                    : pointer.y;
+
             const insideStatsToggle =
                 Math.abs(
-                    pointer.x -
+                    pointerX -
                     rink.centerX
-                ) <= 119 &&
+                ) <= 135 &&
                 Math.abs(
-                    pointer.y -
+                    pointerY -
                     toggleY
-                ) <= 26;
+                ) <= 34;
+
+            const insidePlayButton =
+                Math.abs(
+                    pointerX -
+                    rink.centerX
+                ) <= 125 &&
+                Math.abs(
+                    pointerY -
+                    buttonY
+                ) <= 42;
+
+            if (
+                !insideStatsToggle &&
+                !insidePlayButton
+            ) {
+                return;
+            }
+
+            menuTapLocked = true;
+
+            scene.time.delayedCall(
+                140,
+                () => {
+                    menuTapLocked = false;
+                }
+            );
 
             if (
                 insideStatsToggle
@@ -959,26 +978,12 @@ function createMainMenu(scene) {
                 return;
             }
 
-            const insidePlayButton =
-                Math.abs(
-                    pointer.x -
-                    rink.centerX
-                ) <= 105 &&
-                Math.abs(
-                    pointer.y -
-                    buttonY
-                ) <= 33;
-
-            if (
-                insidePlayButton
-            ) {
-                startGame(
-                    pointer,
-                    0,
-                    0,
-                    null
-                );
-            }
+            startGame(
+                pointer,
+                0,
+                0,
+                null
+            );
         }
     );
 }

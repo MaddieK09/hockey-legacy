@@ -1,6 +1,6 @@
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.0.74
+   VERSION 0.0.75
 
    CONTROLS
    - Left joystick: skate
@@ -445,7 +445,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.0.74",
+            "Version 0.0.75",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -486,7 +486,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             buttonY,
-            "â¶ PLAY",
+            "Ã¢ÂÂ¶ PLAY",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -3111,6 +3111,9 @@ function handleGoalieSave(
     const puck =
         state.puck;
 
+    /*
+     * Only stop pucks travelling toward the top goal.
+     */
     if (
         state.puckVelocityY >= -8
     ) {
@@ -3125,31 +3128,58 @@ function handleGoalieSave(
         goalie.saveHalfHeight +
         state.puckRadius;
 
-    const insideX =
-        Math.abs(
-            puck.x - goalie.x
-        ) <= collisionHalfWidth;
+    const goalieTop =
+        goalie.y -
+        collisionHalfHeight;
 
-    const crossedGoalieY =
-        previousY >=
-            goalie.y -
-            collisionHalfHeight &&
-        puck.y <=
-            goalie.y +
-            collisionHalfHeight;
+    const goalieBottom =
+        goalie.y +
+        collisionHalfHeight;
+
+    /*
+     * Find where the puck crossed the goalie's horizontal save line.
+     * This prevents fast shots from tunnelling through the goalie.
+     */
+    const crossedSaveArea =
+        previousY >= goalieTop &&
+        puck.y <= goalieBottom;
 
     if (
-        !insideX ||
-        !crossedGoalieY
+        !crossedSaveArea
     ) {
         return false;
     }
 
+    const crossingX =
+        getLineCrossingX(
+            previousX,
+            previousY,
+            puck.x,
+            puck.y,
+            goalie.y
+        );
+
+    const horizontalOffset =
+        crossingX -
+        goalie.x;
+
+    if (
+        Math.abs(
+            horizontalOffset
+        ) > collisionHalfWidth
+    ) {
+        return false;
+    }
+
+    /*
+     * A puck that physically reaches the goalie is always saved.
+     * Goals remain possible by shooting around the smaller save area,
+     * especially toward either post. The puck no longer ghosts through
+     * the goalie's body because of a random failed-save roll.
+     */
     const offset =
         Phaser.Math.Clamp(
-            (
-                puck.x - goalie.x
-            ) /
+            horizontalOffset /
             collisionHalfWidth,
             -1,
             1
@@ -3163,84 +3193,26 @@ function handleGoalieSave(
                 state.puckVelocityY
         );
 
-    /*
-     * Saves are deliberately imperfect. Corner shots, hard shots,
-     * quick releases and catching the goalie moving the wrong way
-     * now have a much stronger chance of scoring.
-     */
-    const edgeDifficulty =
-        Math.abs(offset) * 0.46;
-
-    const speedDifficulty =
-        Phaser.Math.Clamp(
-            (
-                incomingSpeed - 230
-            ) / 560,
-            0,
-            0.3
-        );
-
-    const movingWrongWay =
-        Math.sign(
-            state.puckVelocityX
-        ) !== 0 &&
-        Math.sign(
-            goalie.velocityX
-        ) !== 0 &&
-        Math.sign(
-            state.puckVelocityX
-        ) !==
-        Math.sign(
-            goalie.velocityX
-        );
-
-    const movementPenalty =
-        movingWrongWay
-            ? 0.18
-            : 0;
-
-    const saveChance =
-        Phaser.Math.Clamp(
-            0.66 -
-                edgeDifficulty -
-                speedDifficulty -
-                movementPenalty,
-            0.12,
-            0.78
-        );
-
-    if (
-        Math.random() > saveChance
-    ) {
-        /* The puck beats the goalie and continues to the net. */
-        goalie.saveCooldown =
-            0.08;
-
-        return false;
-    }
-
     puck.setPosition(
         goalie.x +
             offset *
             collisionHalfWidth,
-        goalie.y +
-            collisionHalfHeight +
-            0.75
+        goalieBottom + 0.85
     );
 
     state.puckVelocityX =
-        state.puckVelocityX * 0.24 +
+        state.puckVelocityX * 0.22 +
         offset *
             Math.max(
-                70,
-                incomingSpeed * 0.45
+                72,
+                incomingSpeed * 0.48
             ) +
-        goalie.velocityX * 0.18;
+        goalie.velocityX * 0.2;
 
     state.puckVelocityY =
         Math.max(
-            105,
-            incomingSpeed * 0.48
+            112,
+            incomingSpeed * 0.5
         );
 
     goalie.saveCooldown =
@@ -4035,7 +4007,7 @@ function passPuckToTeammate(
 
     flashActionButton(
         scene,
-        `PASS â ${teammate.name}`,
+        `PASS Ã¢ÂÂ ${teammate.name}`,
         0x2477c9
     );
 }

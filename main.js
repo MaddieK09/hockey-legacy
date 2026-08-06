@@ -3,7 +3,7 @@
 
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.0.92
+   VERSION 0.0.93
 
    CONTROLS
    - Left joystick: skate
@@ -575,7 +575,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.0.92",
+            "Version 0.0.93",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -2030,6 +2030,295 @@ function drawRefereeCrease(
     graphics.strokePath();
 }
 
+
+/* =========================================================
+   TOP-DOWN PIXEL-ART SKATER GRAPHICS
+========================================================= */
+
+function createSkaterBody(
+    scene,
+    x,
+    y,
+    options = {}
+) {
+    const jerseyColor =
+        options.jerseyColor ??
+        0x1769d2;
+
+    const secondaryColor =
+        options.secondaryColor ??
+        0xffffff;
+
+    const helmetColor =
+        options.helmetColor ??
+        jerseyColor;
+
+    const skinColor =
+        options.skinColor ??
+        0xe7b98d;
+
+    const pantsColor =
+        options.pantsColor ??
+        0x1b2430;
+
+    const number =
+        options.number ??
+        "";
+
+    const body =
+        scene.add.container(
+            x,
+            y
+        )
+            .setDepth(
+                options.depth ??
+                20
+            );
+
+    /*
+     * Top-down hockey player silhouette:
+     * helmet/head at the front, shoulders and jersey,
+     * gloves, pants, and two skates behind.
+     */
+    const leftSkate =
+        scene.add.rectangle(
+            -5,
+            10,
+            4,
+            10,
+            0x141414,
+            1
+        )
+            .setAngle(-10);
+
+    const rightSkate =
+        scene.add.rectangle(
+            5,
+            10,
+            4,
+            10,
+            0x141414,
+            1
+        )
+            .setAngle(10);
+
+    const pants =
+        scene.add.rectangle(
+            0,
+            5,
+            14,
+            9,
+            pantsColor,
+            1
+        )
+            .setStrokeStyle(
+                1,
+                0xffffff,
+                0.45
+            );
+
+    const torso =
+        scene.add.rectangle(
+            0,
+            -2,
+            18,
+            17,
+            jerseyColor,
+            1
+        )
+            .setStrokeStyle(
+                2,
+                secondaryColor,
+                1
+            );
+
+    const shoulderStripe =
+        scene.add.rectangle(
+            0,
+            -5,
+            18,
+            4,
+            secondaryColor,
+            0.95
+        );
+
+    const leftArm =
+        scene.add.rectangle(
+            -11,
+            -1,
+            6,
+            13,
+            jerseyColor,
+            1
+        )
+            .setStrokeStyle(
+                1,
+                secondaryColor,
+                1
+            )
+            .setAngle(10);
+
+    const rightArm =
+        scene.add.rectangle(
+            11,
+            -1,
+            6,
+            13,
+            jerseyColor,
+            1
+        )
+            .setStrokeStyle(
+                1,
+                secondaryColor,
+                1
+            )
+            .setAngle(-10);
+
+    const leftGlove =
+        scene.add.rectangle(
+            -13,
+            4,
+            5,
+            6,
+            helmetColor,
+            1
+        );
+
+    const rightGlove =
+        scene.add.rectangle(
+            13,
+            4,
+            5,
+            6,
+            helmetColor,
+            1
+        );
+
+    const head =
+        scene.add.circle(
+            0,
+            -12,
+            5,
+            skinColor,
+            1
+        )
+            .setStrokeStyle(
+                1,
+                0x3d2a1f,
+                0.6
+            );
+
+    const helmet =
+        scene.add.rectangle(
+            0,
+            -14,
+            12,
+            6,
+            helmetColor,
+            1
+        )
+            .setStrokeStyle(
+                1,
+                secondaryColor,
+                0.9
+            );
+
+    const visor =
+        scene.add.rectangle(
+            0,
+            -11,
+            8,
+            2,
+            0xbfe9ff,
+            0.8
+        );
+
+    const numberText =
+        scene.add.text(
+            0,
+            -1,
+            String(number),
+            {
+                fontFamily:
+                    "Arial, sans-serif",
+
+                fontSize:
+                    "8px",
+
+                fontStyle:
+                    "bold",
+
+                color:
+                    "#ffffff",
+
+                stroke:
+                    "#000000",
+
+                strokeThickness:
+                    2
+            }
+        )
+            .setOrigin(0.5);
+
+    body.add([
+        leftSkate,
+        rightSkate,
+        pants,
+        torso,
+        shoulderStripe,
+        leftArm,
+        rightArm,
+        leftGlove,
+        rightGlove,
+        head,
+        helmet,
+        visor,
+        numberText
+    ]);
+
+    body.visualParts = {
+        leftSkate,
+        rightSkate,
+        pants,
+        torso,
+        shoulderStripe,
+        leftArm,
+        rightArm,
+        leftGlove,
+        rightGlove,
+        head,
+        helmet,
+        visor,
+        numberText
+    };
+
+    body.setSize(
+        26,
+        30
+    );
+
+    return body;
+}
+
+function updateSkaterBodyRotation(
+    body,
+    facingX,
+    facingY
+) {
+    if (
+        !body
+    ) {
+        return;
+    }
+
+    body.rotation =
+        Math.atan2(
+            facingY,
+            facingX
+        ) +
+        Math.PI / 2;
+}
+
 /* =========================================================
    PLAYER
 ========================================================= */
@@ -2042,18 +2331,30 @@ function createPlayer(scene) {
         state.rink;
 
     state.player =
-        scene.add.circle(
+        createSkaterBody(
+            scene,
             rink.centerX,
             rink.centerY + 66,
-            state.playerRadius,
-            0x1769d2
-        )
-            .setStrokeStyle(
-                3,
-                0xffffff,
-                1
-            )
-            .setDepth(20);
+            {
+                jerseyColor:
+                    0x1769d2,
+
+                secondaryColor:
+                    0xffffff,
+
+                helmetColor:
+                    0x0f4f9b,
+
+                pantsColor:
+                    0x102d4e,
+
+                number:
+                    "9",
+
+                depth:
+                    20
+            }
+        );
 
     state.playerStick =
         scene.add.graphics()
@@ -2062,7 +2363,7 @@ function createPlayer(scene) {
     state.playerIndicator =
         scene.add.triangle(
             rink.centerX,
-            rink.centerY + 44,
+            rink.centerY + 38,
             0,
             8,
             8,
@@ -2078,6 +2379,12 @@ function createPlayer(scene) {
                 1
             )
             .setDepth(24);
+
+    updateSkaterBodyRotation(
+        state.player,
+        state.facingX,
+        state.facingY
+    );
 }
 
 function updatePlayerIndicator(
@@ -2095,7 +2402,7 @@ function updatePlayerIndicator(
 
     state.playerIndicator.setPosition(
         state.player.x,
-        state.player.y - 21
+        state.player.y - 29
     );
 }
 
@@ -2135,18 +2442,32 @@ function createTeammate(
         scene.gameState;
 
     const body =
-        scene.add.circle(
+        createSkaterBody(
+            scene,
             x,
             y,
-            state.teammateRadius,
-            0x2f9f45
-        )
-            .setStrokeStyle(
-                3,
-                0xffffff,
-                1
-            )
-            .setDepth(20);
+            {
+                jerseyColor:
+                    0x2f9f45,
+
+                secondaryColor:
+                    0xffffff,
+
+                helmetColor:
+                    0x1e6d31,
+
+                pantsColor:
+                    0x183d22,
+
+                number:
+                    side === "left"
+                        ? "17"
+                        : "21",
+
+                depth:
+                    20
+            }
+        );
 
     const stick =
         scene.add.graphics()
@@ -2255,7 +2576,13 @@ function updateTeammateVisuals(
 ) {
     teammate.label.setPosition(
         teammate.body.x,
-        teammate.body.y - 18
+        teammate.body.y - 25
+    );
+
+    updateSkaterBodyRotation(
+        teammate.body,
+        teammate.facingX,
+        teammate.facingY
     );
 
     updateTeammateStick(
@@ -3082,6 +3409,12 @@ function updateTeammateFacing(
 
     teammate.facingY =
         Math.sin(newAngle);
+
+    updateSkaterBodyRotation(
+        teammate.body,
+        teammate.facingX,
+        teammate.facingY
+    );
 }
 
 
@@ -3124,18 +3457,32 @@ function createOpponent(
         scene.gameState;
 
     const body =
-        scene.add.circle(
+        createSkaterBody(
+            scene,
             x,
             y,
-            state.teammateRadius,
-            0xc23b3b
-        )
-            .setStrokeStyle(
-                3,
-                0xffffff,
-                1
-            )
-            .setDepth(20);
+            {
+                jerseyColor:
+                    0xc23b3b,
+
+                secondaryColor:
+                    0xffffff,
+
+                helmetColor:
+                    0x811f1f,
+
+                pantsColor:
+                    0x421313,
+
+                number:
+                    side === "left"
+                        ? "4"
+                        : "6",
+
+                depth:
+                    20
+            }
+        );
 
     const stick =
         scene.add.graphics()
@@ -3569,6 +3916,12 @@ function updateOpponentFacing(
         Math.sin(
             newAngle
         );
+
+    updateSkaterBodyRotation(
+        opponent.body,
+        opponent.facingX,
+        opponent.facingY
+    );
 }
 
 function updateOpponentPuckDecision(
@@ -4295,13 +4648,13 @@ function getPlayerStickGeometry(
 
     const bladeStartX =
         state.player.x +
-        state.facingX * 25 +
-        perpendicularX * 8;
+        state.facingX * 27 +
+        perpendicularX * 9;
 
     const bladeStartY =
         state.player.y +
-        state.facingY * 25 +
-        perpendicularY * 8;
+        state.facingY * 27 +
+        perpendicularY * 9;
 
     const bladeEndX =
         bladeStartX +
@@ -4342,13 +4695,13 @@ function getTeammateStickGeometry(
 
     const bladeStartX =
         teammate.body.x +
-        teammate.facingX * 23 +
-        perpendicularX * 7;
+        teammate.facingX * 26 +
+        perpendicularX * 8;
 
     const bladeStartY =
         teammate.body.y +
-        teammate.facingY * 23 +
-        perpendicularY * 7;
+        teammate.facingY * 26 +
+        perpendicularY * 8;
 
     const bladeEndX =
         bladeStartX +
@@ -7792,6 +8145,12 @@ function updatePlayerFacing(
         Math.sin(
             state.facingAngle
         );
+
+    updateSkaterBodyRotation(
+        state.player,
+        state.facingX,
+        state.facingY
+    );
 }
 
 function updatePlayerMovement(

@@ -3,7 +3,7 @@
 
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.0.99
+   VERSION 0.1.00
 
    CONTROLS
    - Left joystick: skate
@@ -585,7 +585,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.0.99",
+            "Version 0.1.00",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -2473,6 +2473,14 @@ function createSkaterBody(
             options.number ?? ""
         );
 
+    body.baseFacingRotation = 0;
+
+    body.animationOffset =
+        Phaser.Math.FloatBetween(
+            0,
+            Math.PI * 2
+        );
+
     return body;
 }
 
@@ -2487,12 +2495,15 @@ function updateSkaterBodyRotation(
         return;
     }
 
-    body.rotation =
+    body.baseFacingRotation =
         Math.atan2(
             facingY,
             facingX
         ) +
         Math.PI / 2;
+
+    body.rotation =
+        body.baseFacingRotation;
 }
 
 function updateSkaterAnimation(
@@ -2514,51 +2525,93 @@ function updateSkaterAnimation(
             velocityY * velocityY
         );
 
-    const moving =
-        speed > 8;
+    const speedRatio =
+        Phaser.Math.Clamp(
+            speed / 190,
+            0,
+            1
+        );
 
     if (
-        !moving
+        speed < 7
     ) {
-        body.setScale(1);
-        body.setY(
-            Math.round(body.y)
+        body.rotation =
+            body.baseFacingRotation;
+
+        body.setScale(
+            1,
+            1
         );
 
         return;
     }
 
-    const strideSpeed =
+    const strideFrequency =
         sprinting
-            ? 13
-            : 8.5;
+            ? 15
+            : 10;
+
+    const phase =
+        animationClock *
+            strideFrequency +
+        (
+            body.animationOffset ||
+            0
+        );
 
     const stride =
         Math.sin(
-            animationClock *
-            strideSpeed
+            phase
         );
 
-    const bob =
-        Math.abs(stride) *
+    const compression =
+        Math.abs(
+            Math.cos(
+                phase
+            )
+        );
+
+    /*
+     * Visible left-right skating lean.
+     * This changes only rendering rotation/scale, not x/y physics.
+     */
+    const leanAmount =
         (
             sprinting
-                ? 1.6
-                : 0.9
-        );
+                ? 0.13
+                : 0.085
+        ) *
+        speedRatio;
 
-    const stretch =
-        sprinting
-            ? 1.035
-            : 1.018;
+    body.rotation =
+        body.baseFacingRotation +
+        stride *
+        leanAmount;
+
+    const horizontalScale =
+        1 +
+        compression *
+        (
+            sprinting
+                ? 0.075
+                : 0.045
+        ) *
+        speedRatio;
+
+    const verticalScale =
+        1 -
+        compression *
+        (
+            sprinting
+                ? 0.055
+                : 0.03
+        ) *
+        speedRatio;
 
     body.setScale(
-        1 / stretch,
-        stretch
+        horizontalScale,
+        verticalScale
     );
-
-    body.y +=
-        bob * 0.18;
 }
 
 function playCheckAnimation(
@@ -5146,6 +5199,40 @@ function updatePlayerStick(scene) {
         geometry.bladeEndX,
         geometry.bladeEndY
     );
+
+    const playerSpeed =
+        Math.sqrt(
+            state.playerVelocityX *
+                state.playerVelocityX +
+            state.playerVelocityY *
+                state.playerVelocityY
+        );
+
+    if (
+        playerSpeed > 10
+    ) {
+        const pulse =
+            0.82 +
+            Math.abs(
+                Math.sin(
+                    state.animationClock *
+                    (
+                        state.sprinting
+                            ? 15
+                            : 10
+                    )
+                )
+            ) *
+            0.18;
+
+        state.playerStick
+            .setAlpha(
+                pulse
+            );
+    } else {
+        state.playerStick
+            .setAlpha(1);
+    }
 }
 
 function updateTeammateStick(
@@ -9503,6 +9590,16 @@ function updateSprintButtonAppearance(
                 "SPRINT ON"
             )
             .setScale(1.04);
+
+        if (
+            state.player
+        ) {
+            state.player
+                .setScale(
+                    1.08,
+                    0.94
+                );
+        }
     } else {
         state.sprintButton.button
             .setFillStyle(
@@ -9516,6 +9613,22 @@ function updateSprintButtonAppearance(
                 "SPRINT OFF"
             )
             .setScale(1);
+
+        if (
+            state.player &&
+            Math.abs(
+                state.playerVelocityX
+            ) < 8 &&
+            Math.abs(
+                state.playerVelocityY
+            ) < 8
+        ) {
+            state.player
+                .setScale(
+                    1,
+                    1
+                );
+        }
     }
 }
 

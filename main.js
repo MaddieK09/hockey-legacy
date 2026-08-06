@@ -3,7 +3,7 @@
 
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.0.95
+   VERSION 0.0.96
 
    CONTROLS
    - Left joystick: skate
@@ -585,7 +585,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.0.95",
+            "Version 0.0.96",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -642,10 +642,7 @@ function createMainMenu(scene) {
             }
         )
             .setOrigin(0.5)
-            .setDepth(301)
-            .setInteractive({
-                useHandCursor: true
-            });
+            .setDepth(301);
 
     const togglePlayerStats = (
         pointer,
@@ -695,12 +692,7 @@ function createMainMenu(scene) {
     };
 
     statsToggleButton.on(
-        "pointerdown",
-        togglePlayerStats
-    );
-
-    statsToggleText.on(
-        "pointerdown",
+        "pointerup",
         togglePlayerStats
     );
 
@@ -765,10 +757,7 @@ function createMainMenu(scene) {
             }
         )
             .setOrigin(0.5)
-            .setDepth(301)
-            .setInteractive({
-                useHandCursor: true
-            });
+            .setDepth(301);
 
     const startGame = (
         pointer,
@@ -776,93 +765,148 @@ function createMainMenu(scene) {
         localY,
         event
     ) => {
-        if (state.gameStarted) {
+        if (
+            state.gameStarted
+        ) {
             return;
         }
 
-        state.gameStarted = true;
+        try {
+            state.gameStarted = true;
 
-        button.disableInteractive();
-        buttonText.disableInteractive();
+            button.disableInteractive();
 
-        statsToggleButton
-            .disableInteractive();
+            statsToggleButton
+                .disableInteractive();
 
-        statsToggleText
-            .disableInteractive();
+            titleText.setVisible(false);
+            versionText.setVisible(false);
 
-        titleText.setVisible(false);
-        versionText.setVisible(false);
+            button.setVisible(false);
+            buttonText.setVisible(false);
 
-        button.setVisible(false);
-        buttonText.setVisible(false);
+            statsToggleButton
+                .setVisible(false);
 
-        statsToggleButton
-            .setVisible(false);
+            statsToggleText
+                .setVisible(false);
 
-        statsToggleText
-            .setVisible(false);
+            statsToggleHint
+                .setVisible(false);
 
-        statsToggleHint
-            .setVisible(false);
+            drawRink(
+                scene,
+                rink
+            );
 
-        drawRink(
-            scene,
-            rink
-        );
+            createGoalPresentation(
+                scene
+            );
 
-        createGoalPresentation(
-            scene
-        );
+            createScoreboard(
+                scene
+            );
 
-        createScoreboard(
-            scene
-        );
+            createPlayerStatsDisplay(
+                scene
+            );
 
-        createPlayerStatsDisplay(
-            scene
-        );
+            createPlayer(
+                scene
+            );
 
-        createPlayer(
-            scene
-        );
+            createTeammates(
+                scene
+            );
 
-        createTeammates(
-            scene
-        );
+            createOpponents(
+                scene
+            );
 
-        createOpponents(
-            scene
-        );
+            createPuck(
+                scene
+            );
 
-        createPuck(
-            scene
-        );
+            createGoalie(
+                scene
+            );
 
-        createGoalie(
-            scene
-        );
+            createTeamGoalie(
+                scene
+            );
 
-        createTeamGoalie(
-            scene
-        );
+            createMobileControls(
+                scene
+            );
 
-        createMobileControls(
-            scene
-        );
+            createKeyboardControls(
+                scene
+            );
 
-        createKeyboardControls(
-            scene
-        );
+            createPassCallVisuals(
+                scene
+            );
 
-        createPassCallVisuals(
-            scene
-        );
+            resetPlayersForCenterFaceoff(
+                scene,
+                false
+            );
+        } catch (error) {
+            console.error(
+                "Game start failed:",
+                error
+            );
 
-        resetPlayersForCenterFaceoff(
-            scene,
-            false
-        );
+            state.gameStarted = false;
+
+            button
+                .setVisible(true)
+                .setInteractive({
+                    useHandCursor: true
+                });
+
+            buttonText
+                .setVisible(true);
+
+            statsToggleButton
+                .setVisible(true)
+                .setInteractive({
+                    useHandCursor: true
+                });
+
+            statsToggleText
+                .setVisible(true);
+
+            statsToggleHint
+                .setVisible(true);
+
+            titleText.setVisible(true);
+            versionText.setVisible(true);
+
+            const status =
+                document.getElementById(
+                    "loading-status"
+                );
+
+            if (
+                status
+            ) {
+                status.style.display =
+                    "block";
+
+                status.style.background =
+                    "#8f1515";
+
+                status.textContent =
+                    "START ERROR: " +
+                    (
+                        error &&
+                        error.message
+                            ? error.message
+                            : String(error)
+                    );
+            }
+        }
 
         if (
             event &&
@@ -873,13 +917,69 @@ function createMainMenu(scene) {
     };
 
     button.on(
-        "pointerdown",
+        "pointerup",
         startGame
     );
 
-    buttonText.on(
-        "pointerdown",
-        startGame
+    /*
+     * iPhone Safari fallback:
+     * Phaser occasionally misses object-level taps after a large script
+     * replacement. This scene-level handler checks the menu rectangles
+     * directly, so PLAY and PLAYER STATS remain tappable.
+     */
+    scene.input.on(
+        "pointerup",
+        pointer => {
+            if (
+                state.gameStarted
+            ) {
+                return;
+            }
+
+            const insideStatsToggle =
+                Math.abs(
+                    pointer.x -
+                    rink.centerX
+                ) <= 119 &&
+                Math.abs(
+                    pointer.y -
+                    toggleY
+                ) <= 26;
+
+            if (
+                insideStatsToggle
+            ) {
+                togglePlayerStats(
+                    pointer,
+                    0,
+                    0,
+                    null
+                );
+
+                return;
+            }
+
+            const insidePlayButton =
+                Math.abs(
+                    pointer.x -
+                    rink.centerX
+                ) <= 105 &&
+                Math.abs(
+                    pointer.y -
+                    buttonY
+                ) <= 33;
+
+            if (
+                insidePlayButton
+            ) {
+                startGame(
+                    pointer,
+                    0,
+                    0,
+                    null
+                );
+            }
+        }
     );
 }
 

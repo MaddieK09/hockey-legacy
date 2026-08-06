@@ -3,7 +3,7 @@
 
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.1.10
+   VERSION 0.1.11
 
    CONTROLS
    - Left joystick: skate
@@ -924,7 +924,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.1.10",
+            "Version 0.1.11",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -10139,7 +10139,7 @@ function createAimJoystick(
         scene.add.text(
             x,
             y,
-            "SHOOT",
+            "PULL",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -10907,27 +10907,72 @@ function updateAimFromPointer(
     }
 
     /*
-     * Slingshot shooting:
-     * drag the stick backward and release to shoot in the opposite direction.
-     * Pulling down therefore shoots toward the offensive goal at the top.
+     * True pull-down shooting.
+     *
+     * Power comes ONLY from dragging below the joystick centre. Dragging
+     * upward cannot charge or fire a shot. Horizontal movement while pulling
+     * down adds left/right aim, but the puck always travels up-ice toward the
+     * offensive goal.
      */
-    const dragDirectionX =
-        deltaX / distance;
+    const pullDistance =
+        Math.max(
+            0,
+            deltaY
+        );
 
-    const dragDirectionY =
-        deltaY / distance;
+    if (
+        pullDistance < 4
+    ) {
+        aim.directionX = 0;
+        aim.directionY = -1;
 
-    const shotDirectionX =
-        -dragDirectionX;
+        aim.distance = 0;
+        aim.strength = 0;
 
-    const shotDirectionY =
-        -dragDirectionY;
+        aim.knob.setPosition(
+            aim.centerX,
+            aim.centerY
+        );
 
-    const clampedDistance =
+        aim.label.setPosition(
+            aim.centerX,
+            aim.centerY
+        );
+
+        state.targetFacingAngle =
+            -Math.PI / 2;
+
+        return;
+    }
+
+    const clampedPull =
         Math.min(
-            distance,
+            pullDistance,
             aim.maximumDistance
         );
+
+    const horizontalAim =
+        Phaser.Math.Clamp(
+            deltaX /
+                aim.maximumDistance,
+            -0.72,
+            0.72
+        );
+
+    const shotLength =
+        Math.sqrt(
+            horizontalAim *
+                horizontalAim +
+            1
+        );
+
+    const shotDirectionX =
+        horizontalAim /
+        shotLength;
+
+    const shotDirectionY =
+        -1 /
+        shotLength;
 
     aim.directionX =
         shotDirectionX;
@@ -10936,25 +10981,31 @@ function updateAimFromPointer(
         shotDirectionY;
 
     aim.distance =
-        clampedDistance;
+        clampedPull;
 
     aim.strength =
         Phaser.Math.Clamp(
-            clampedDistance /
+            clampedPull /
                 aim.maximumDistance,
             0,
             1
         );
 
+    /*
+     * The knob follows the finger downward. Side-to-side travel is limited so
+     * the control still feels like pulling back a hockey stick.
+     */
     const knobX =
         aim.centerX +
-        dragDirectionX *
-        clampedDistance;
+        Phaser.Math.Clamp(
+            deltaX,
+            -aim.maximumDistance * 0.72,
+            aim.maximumDistance * 0.72
+        );
 
     const knobY =
         aim.centerY +
-        dragDirectionY *
-        clampedDistance;
+        clampedPull;
 
     aim.knob.setPosition(
         knobX,

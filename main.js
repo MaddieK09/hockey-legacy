@@ -3,7 +3,7 @@
 
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.1.05
+   VERSION 0.1.06
 
    CONTROLS
    - Left joystick: skate
@@ -120,7 +120,10 @@ const PLAYER_BLUE_IDLE_KEY =
     "player-blue-idle";
 
 const PLAYER_BLUE_IDLE_PATH =
-    "assets/sprites/4E800B5A-52F2-4C86-9793-A167B3FD4453.png";
+    "./assets/sprites/4E800B5A-52F2-4C86-9793-A167B3FD4453.png?v=3";
+
+const PLAYER_BLUE_TRIMMED_KEY =
+    "player-blue-idle-trimmed";
 
 function preload() {
     this.load.image(
@@ -129,12 +132,238 @@ function preload() {
     );
 }
 
+function createTrimmedPlayerTexture(scene) {
+    if (
+        !scene.textures.exists(
+            PLAYER_BLUE_IDLE_KEY
+        )
+    ) {
+        return false;
+    }
+
+    if (
+        scene.textures.exists(
+            PLAYER_BLUE_TRIMMED_KEY
+        )
+    ) {
+        return true;
+    }
+
+    try {
+        const sourceTexture =
+            scene.textures.get(
+                PLAYER_BLUE_IDLE_KEY
+            );
+
+        const sourceImage =
+            sourceTexture.getSourceImage();
+
+        const sourceWidth =
+            sourceImage.naturalWidth ||
+            sourceImage.width;
+
+        const sourceHeight =
+            sourceImage.naturalHeight ||
+            sourceImage.height;
+
+        if (
+            !sourceWidth ||
+            !sourceHeight
+        ) {
+            return false;
+        }
+
+        const scanCanvas =
+            document.createElement(
+                "canvas"
+            );
+
+        scanCanvas.width = sourceWidth;
+        scanCanvas.height = sourceHeight;
+
+        const scanContext =
+            scanCanvas.getContext(
+                "2d",
+                { willReadFrequently: true }
+            );
+
+        scanContext.clearRect(
+            0,
+            0,
+            sourceWidth,
+            sourceHeight
+        );
+
+        scanContext.drawImage(
+            sourceImage,
+            0,
+            0
+        );
+
+        const pixels =
+            scanContext.getImageData(
+                0,
+                0,
+                sourceWidth,
+                sourceHeight
+            ).data;
+
+        let minimumX = sourceWidth;
+        let minimumY = sourceHeight;
+        let maximumX = -1;
+        let maximumY = -1;
+
+        const alphaThreshold = 10;
+
+        for (
+            let y = 0;
+            y < sourceHeight;
+            y += 1
+        ) {
+            for (
+                let x = 0;
+                x < sourceWidth;
+                x += 1
+            ) {
+                const alpha =
+                    pixels[
+                        (
+                            y *
+                            sourceWidth +
+                            x
+                        ) *
+                        4 +
+                        3
+                    ];
+
+                if (alpha <= alphaThreshold) {
+                    continue;
+                }
+
+                minimumX =
+                    Math.min(
+                        minimumX,
+                        x
+                    );
+
+                minimumY =
+                    Math.min(
+                        minimumY,
+                        y
+                    );
+
+                maximumX =
+                    Math.max(
+                        maximumX,
+                        x
+                    );
+
+                maximumY =
+                    Math.max(
+                        maximumY,
+                        y
+                    );
+            }
+        }
+
+        if (
+            maximumX < minimumX ||
+            maximumY < minimumY
+        ) {
+            return false;
+        }
+
+        const padding = 8;
+
+        minimumX = Math.max(
+            0,
+            minimumX - padding
+        );
+
+        minimumY = Math.max(
+            0,
+            minimumY - padding
+        );
+
+        maximumX = Math.min(
+            sourceWidth - 1,
+            maximumX + padding
+        );
+
+        maximumY = Math.min(
+            sourceHeight - 1,
+            maximumY + padding
+        );
+
+        const croppedWidth =
+            maximumX - minimumX + 1;
+
+        const croppedHeight =
+            maximumY - minimumY + 1;
+
+        const trimmedTexture =
+            scene.textures.createCanvas(
+                PLAYER_BLUE_TRIMMED_KEY,
+                croppedWidth,
+                croppedHeight
+            );
+
+        const trimmedContext =
+            trimmedTexture.getContext();
+
+        trimmedContext.imageSmoothingEnabled =
+            true;
+
+        trimmedContext.clearRect(
+            0,
+            0,
+            croppedWidth,
+            croppedHeight
+        );
+
+        trimmedContext.drawImage(
+            sourceImage,
+            minimumX,
+            minimumY,
+            croppedWidth,
+            croppedHeight,
+            0,
+            0,
+            croppedWidth,
+            croppedHeight
+        );
+
+        trimmedTexture.refresh();
+
+        console.info(
+            "Player sprite trimmed successfully:",
+            {
+                sourceWidth,
+                sourceHeight,
+                croppedWidth,
+                croppedHeight
+            }
+        );
+
+        return true;
+    } catch (error) {
+        console.warn(
+            "Automatic player-sprite trimming failed:",
+            error
+        );
+
+        return false;
+    }
+}
+
 /* =========================================================
    CREATE
 ========================================================= */
 
 function create() {
     const scene = this;
+
+    createTrimmedPlayerTexture(scene);
 
     scene.cameras.main
         .setRoundPixels(true);
@@ -619,7 +848,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.1.05",
+            "Version 0.1.06",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -3174,16 +3403,23 @@ function createPlayer(scene) {
     const rink =
         state.rink;
 
+    const externalPlayerTextureKey =
+        scene.textures.exists(
+            PLAYER_BLUE_TRIMMED_KEY
+        )
+            ? PLAYER_BLUE_TRIMMED_KEY
+            : PLAYER_BLUE_IDLE_KEY;
+
     if (
         scene.textures.exists(
-            PLAYER_BLUE_IDLE_KEY
+            externalPlayerTextureKey
         )
     ) {
         const playerImage =
             scene.add.image(
                 0,
                 0,
-                PLAYER_BLUE_IDLE_KEY
+                externalPlayerTextureKey
             )
                 .setOrigin(0.5)
                 .setDisplaySize(
@@ -12888,10 +13124,4 @@ function clampPointInsideRoundedRink(
 
     return {
         x: correctedX,
-        y: correctedY,
-        hitX,
-        hitY
-    };
-}
-
-})();
+       

@@ -1,6 +1,6 @@
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.0.70
+   VERSION 0.0.71
 
    CONTROLS
    - Left joystick: skate
@@ -137,6 +137,31 @@ function create() {
         teammates: [],
 
         puck: null,
+
+        goalie: {
+            body: null,
+            pads: null,
+            glove: null,
+            blocker: null,
+            stick: null,
+            label: null,
+
+            x: rink.centerX,
+            y: rink.top + 61,
+
+            homeX: rink.centerX,
+            homeY: rink.top + 61,
+
+            velocityX: 0,
+            maximumSpeed: 118,
+            acceleration: 520,
+            deceleration: 680,
+
+            halfWidth: 19,
+            halfHeight: 10,
+            saveCooldown: 0,
+            saveFlash: null
+        },
 
         playerRadius: 11,
         teammateRadius: 10,
@@ -410,7 +435,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.0.70",
+            "Version 0.0.71",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -451,7 +476,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             buttonY,
-            "▶ PLAY",
+            "â¶ PLAY",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -515,6 +540,10 @@ function createMainMenu(scene) {
         );
 
         createPuck(
+            scene
+        );
+
+        createGoalie(
             scene
         );
 
@@ -647,6 +676,11 @@ function update(
     );
 
     updateTeammateAI(
+        this,
+        deltaSeconds
+    );
+
+    updateGoalie(
         this,
         deltaSeconds
     );
@@ -2642,6 +2676,506 @@ function updateTeammateStick(
 }
 
 /* =========================================================
+   GOALIE
+========================================================= */
+
+function createGoalie(scene) {
+    const state =
+        scene.gameState;
+
+    const goalie =
+        state.goalie;
+
+    goalie.pads =
+        scene.add.rectangle(
+            goalie.x,
+            goalie.y + 7,
+            38,
+            12,
+            0xffffff,
+            1
+        )
+            .setStrokeStyle(
+                2,
+                0x17375e,
+                1
+            )
+            .setDepth(25);
+
+    goalie.body =
+        scene.add.circle(
+            goalie.x,
+            goalie.y - 2,
+            11,
+            0x8f2020,
+            1
+        )
+            .setStrokeStyle(
+                3,
+                0xffffff,
+                1
+            )
+            .setDepth(26);
+
+    goalie.glove =
+        scene.add.circle(
+            goalie.x - 18,
+            goalie.y,
+            5,
+            0x8f2020,
+            1
+        )
+            .setStrokeStyle(
+                1,
+                0xffffff,
+                1
+            )
+            .setDepth(27);
+
+    goalie.blocker =
+        scene.add.rectangle(
+            goalie.x + 18,
+            goalie.y,
+            9,
+            9,
+            0x8f2020,
+            1
+        )
+            .setStrokeStyle(
+                1,
+                0xffffff,
+                1
+            )
+            .setDepth(27);
+
+    goalie.stick =
+        scene.add.graphics()
+            .setDepth(27);
+
+    goalie.label =
+        scene.add.text(
+            goalie.x,
+            goalie.y - 24,
+            "G",
+            {
+                fontFamily:
+                    "Arial, sans-serif",
+
+                fontSize:
+                    "9px",
+
+                fontStyle:
+                    "bold",
+
+                color:
+                    "#ffffff",
+
+                backgroundColor:
+                    "#8f2020",
+
+                padding: {
+                    left: 3,
+                    right: 3,
+                    top: 1,
+                    bottom: 1
+                }
+            }
+        )
+            .setOrigin(0.5)
+            .setDepth(28);
+
+    goalie.saveFlash =
+        scene.add.text(
+            goalie.x,
+            goalie.y + 31,
+            "SAVE!",
+            {
+                fontFamily:
+                    "Arial, sans-serif",
+
+                fontSize:
+                    "12px",
+
+                fontStyle:
+                    "bold",
+
+                color:
+                    "#ffffff",
+
+                stroke:
+                    "#17375e",
+
+                strokeThickness:
+                    3
+            }
+        )
+            .setOrigin(0.5)
+            .setDepth(180)
+            .setVisible(false);
+
+    updateGoalieVisuals(
+        scene
+    );
+}
+
+function updateGoalie(
+    scene,
+    deltaSeconds
+) {
+    const state =
+        scene.gameState;
+
+    const goalie =
+        state.goalie;
+
+    if (
+        !goalie.body ||
+        state.playStopped
+    ) {
+        return;
+    }
+
+    goalie.saveCooldown =
+        Math.max(
+            0,
+            goalie.saveCooldown -
+                deltaSeconds
+        );
+
+    let targetX =
+        goalie.homeX;
+
+    const puckIsLoose =
+        !state.possession.owner;
+
+    const puckIsAttacking =
+        state.puck.y <
+        state.rink.centerY + 40;
+
+    if (
+        puckIsLoose &&
+        puckIsAttacking
+    ) {
+        const velocityLead =
+            Phaser.Math.Clamp(
+                state.puckVelocityX * 0.08,
+                -16,
+                16
+            );
+
+        targetX =
+            state.puck.x +
+            velocityLead;
+    } else if (
+        state.possession.owner
+    ) {
+        const owner =
+            state.possession.owner;
+
+        const ownerX =
+            owner === state.player
+                ? state.player.x
+                : owner.body.x;
+
+        targetX =
+            ownerX;
+    }
+
+    targetX =
+        Phaser.Math.Clamp(
+            targetX,
+            state.rink.centerX - 25,
+            state.rink.centerX + 25
+        );
+
+    const difference =
+        targetX -
+        goalie.x;
+
+    const desiredVelocity =
+        Math.abs(difference) > 1.5
+            ? Math.sign(difference) *
+                goalie.maximumSpeed
+            : 0;
+
+    const changeRate =
+        desiredVelocity === 0
+            ? goalie.deceleration
+            : goalie.acceleration;
+
+    goalie.velocityX =
+        moveToward(
+            goalie.velocityX,
+            desiredVelocity,
+            changeRate *
+                deltaSeconds
+        );
+
+    goalie.x +=
+        goalie.velocityX *
+        deltaSeconds;
+
+    goalie.x =
+        Phaser.Math.Clamp(
+            goalie.x,
+            state.rink.centerX - 25,
+            state.rink.centerX + 25
+        );
+
+    goalie.y =
+        goalie.homeY;
+
+    updateGoalieVisuals(
+        scene
+    );
+}
+
+function updateGoalieVisuals(scene) {
+    const goalie =
+        scene.gameState.goalie;
+
+    if (!goalie.body) {
+        return;
+    }
+
+    goalie.pads.setPosition(
+        goalie.x,
+        goalie.y + 7
+    );
+
+    goalie.body.setPosition(
+        goalie.x,
+        goalie.y - 2
+    );
+
+    goalie.glove.setPosition(
+        goalie.x - 18,
+        goalie.y
+    );
+
+    goalie.blocker.setPosition(
+        goalie.x + 18,
+        goalie.y
+    );
+
+    goalie.label.setPosition(
+        goalie.x,
+        goalie.y - 24
+    );
+
+    goalie.saveFlash.setPosition(
+        goalie.x,
+        goalie.y + 31
+    );
+
+    goalie.stick.clear();
+
+    goalie.stick.lineStyle(
+        3,
+        0x6e4524,
+        1
+    );
+
+    goalie.stick.lineBetween(
+        goalie.x + 15,
+        goalie.y + 2,
+        goalie.x + 21,
+        goalie.y + 18
+    );
+
+    goalie.stick.lineStyle(
+        4,
+        0x222222,
+        1
+    );
+
+    goalie.stick.lineBetween(
+        goalie.x + 21,
+        goalie.y + 18,
+        goalie.x + 11,
+        goalie.y + 20
+    );
+}
+
+function handleGoalieSave(
+    scene,
+    previousX,
+    previousY
+) {
+    const state =
+        scene.gameState;
+
+    const goalie =
+        state.goalie;
+
+    if (
+        !goalie.body ||
+        goalie.saveCooldown > 0 ||
+        state.possession.owner ||
+        state.playStopped
+    ) {
+        return false;
+    }
+
+    const puck =
+        state.puck;
+
+    const movingTowardTopGoal =
+        state.puckVelocityY < -8;
+
+    if (!movingTowardTopGoal) {
+        return false;
+    }
+
+    const collisionHalfWidth =
+        goalie.halfWidth +
+        state.puckRadius;
+
+    const collisionHalfHeight =
+        goalie.halfHeight +
+        state.puckRadius;
+
+    const insideX =
+        Math.abs(
+            puck.x - goalie.x
+        ) <= collisionHalfWidth;
+
+    const crossedGoalieY =
+        previousY >=
+            goalie.y - collisionHalfHeight &&
+        puck.y <=
+            goalie.y + collisionHalfHeight;
+
+    if (
+        !insideX ||
+        !crossedGoalieY
+    ) {
+        return false;
+    }
+
+    const offset =
+        Phaser.Math.Clamp(
+            (
+                puck.x - goalie.x
+            ) /
+            collisionHalfWidth,
+            -1,
+            1
+        );
+
+    const incomingSpeed =
+        Math.sqrt(
+            state.puckVelocityX *
+                state.puckVelocityX +
+            state.puckVelocityY *
+                state.puckVelocityY
+        );
+
+    puck.setPosition(
+        goalie.x +
+            offset *
+            collisionHalfWidth,
+        goalie.y +
+            collisionHalfHeight +
+            0.75
+    );
+
+    state.puckVelocityX =
+        state.puckVelocityX * 0.28 +
+        offset *
+            Math.max(
+                75,
+                incomingSpeed * 0.48
+            );
+
+    state.puckVelocityY =
+        Math.max(
+            120,
+            incomingSpeed * 0.52
+        );
+
+    goalie.saveCooldown =
+        0.12;
+
+    showGoalieSaveFlash(
+        scene
+    );
+
+    return true;
+}
+
+function showGoalieSaveFlash(scene) {
+    const goalie =
+        scene.gameState.goalie;
+
+    if (!goalie.saveFlash) {
+        return;
+    }
+
+    scene.tweens.killTweensOf(
+        goalie.saveFlash
+    );
+
+    goalie.saveFlash
+        .setVisible(true)
+        .setAlpha(1)
+        .setScale(0.75);
+
+    scene.tweens.add({
+        targets:
+            goalie.saveFlash,
+
+        alpha: 0,
+        scaleX: 1.25,
+        scaleY: 1.25,
+
+        duration: 430,
+
+        ease:
+            "Cubic.Out",
+
+        onComplete: () => {
+            goalie.saveFlash
+                .setVisible(false)
+                .setAlpha(1)
+                .setScale(1);
+        }
+    });
+}
+
+function resetGoalie(scene) {
+    const state =
+        scene.gameState;
+
+    const goalie =
+        state.goalie;
+
+    goalie.x =
+        goalie.homeX;
+
+    goalie.y =
+        goalie.homeY;
+
+    goalie.velocityX = 0;
+    goalie.saveCooldown = 0;
+
+    if (goalie.saveFlash) {
+        scene.tweens.killTweensOf(
+            goalie.saveFlash
+        );
+
+        goalie.saveFlash
+            .setVisible(false)
+            .setAlpha(1)
+            .setScale(1);
+    }
+
+    updateGoalieVisuals(
+        scene
+    );
+}
+
+/* =========================================================
    PUCK
 ========================================================= */
 
@@ -3348,7 +3882,7 @@ function passPuckToTeammate(
 
     flashActionButton(
         scene,
-        `PASS → ${teammate.name}`,
+        `PASS â ${teammate.name}`,
         0x2477c9
     );
 }
@@ -4558,6 +5092,16 @@ function updatePuckMovement(
             nextX,
             nextY
         );
+
+        if (
+            handleGoalieSave(
+                scene,
+                previousX,
+                previousY
+            )
+        ) {
+            continue;
+        }
 
         if (
             checkForGoal(
@@ -6542,6 +7086,10 @@ function resetPlayersForCenterFaceoff(
     state.player.setPosition(
         rink.centerX,
         rink.centerY + 66
+    );
+
+    resetGoalie(
+        scene
     );
 
     const positions = [

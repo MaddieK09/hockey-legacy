@@ -3,7 +3,7 @@
 
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.1.01
+   VERSION 0.1.02
 
    CONTROLS
    - Left joystick: skate
@@ -419,8 +419,8 @@ function create() {
             directionY: 0,
             strength: 0,
 
-            baseRadius: 38,
-            knobRadius: 18,
+            baseRadius: 34,
+            knobRadius: 16,
             maximumDistance: 34,
 
             base: null,
@@ -440,8 +440,8 @@ function create() {
             strength: 0,
             distance: 0,
 
-            baseRadius: 38,
-            knobRadius: 18,
+            baseRadius: 34,
+            knobRadius: 16,
             maximumDistance: 55,
 
             base: null,
@@ -585,7 +585,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.1.01",
+            "Version 0.1.02",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -1263,8 +1263,8 @@ function createScoreboard(scene) {
         scene.add.rectangle(
             scoreboardX,
             scoreboardY,
-            78,
-            32,
+            72,
+            30,
             0x102d4e,
             0.95
         )
@@ -1521,6 +1521,19 @@ function drawRink(
         rink.width,
         rink.height,
         rink.cornerRadius
+    );
+
+    graphics.fillStyle(
+        0xdff3ff,
+        0.18
+    );
+
+    graphics.fillRoundedRect(
+        rink.left + 8,
+        rink.centerY - 92,
+        rink.width - 16,
+        184,
+        22
     );
 
     drawMainLines(
@@ -2225,380 +2238,341 @@ function drawRefereeCrease(
    TOP-DOWN PIXEL-ART SKATER GRAPHICS
 ========================================================= */
 
-function drawBirdseyeSkater(
-    body,
-    stride = 0,
-    speedRatio = 0,
-    sprinting = false
+function getSkaterTextureKey(
+    style,
+    frame
 ) {
+    return [
+        "skater",
+        style.jerseyColor,
+        style.secondaryColor,
+        style.helmetColor,
+        style.pantsColor,
+        frame
+    ].join("_");
+}
+
+function createPixelSkaterTexture(
+    scene,
+    style,
+    frame
+) {
+    const textureKey =
+        getSkaterTextureKey(
+            style,
+            frame
+        );
+
     if (
-        !body ||
-        !body.skaterStyle
+        scene.textures.exists(
+            textureKey
+        )
     ) {
-        return;
+        return textureKey;
     }
 
-    const style =
-        body.skaterStyle;
+    const width = 40;
+    const height = 48;
 
-    const jerseyColor =
-        style.jerseyColor;
+    const texture =
+        scene.textures.createCanvas(
+            textureKey,
+            width,
+            height
+        );
 
-    const secondaryColor =
-        style.secondaryColor;
+    const context =
+        texture.getContext();
 
-    const helmetColor =
-        style.helmetColor;
+    context.imageSmoothingEnabled =
+        false;
 
-    const skinColor =
-        style.skinColor;
-
-    const pantsColor =
-        style.pantsColor;
-
-    const number =
-        style.number;
-
-    /*
-     * Real animation frames:
-     * stride moves the left and right legs in opposite directions.
-     * Arms counter-swing, like a skater pushing off each edge.
-     */
-    const strideAmount =
-        stride *
-        (
-            sprinting
-                ? 4.5
-                : 3.2
-        ) *
-        speedRatio;
-
-    const pushAmount =
-        Math.abs(stride) *
-        (
-            sprinting
-                ? 2.2
-                : 1.35
-        ) *
-        speedRatio;
-
-    const leftLegX =
-        -5 -
-        strideAmount;
-
-    const rightLegX =
-        5 +
-        strideAmount;
-
-    const leftArmX =
-        -13 +
-        strideAmount * 0.45;
-
-    const rightArmX =
-        13 -
-        strideAmount * 0.45;
-
-    body.clear();
-
-    /*
-     * Shadow makes players readable over rink lines.
-     */
-    body.fillStyle(
-        0x000000,
-        0.18
-    );
-
-    body.fillEllipse(
+    context.clearRect(
         0,
-        8,
-        31,
-        19
+        0,
+        width,
+        height
+    );
+
+    const centerX = 20;
+
+    const strideFrames = [
+        {
+            leftLegX: -3,
+            rightLegX: 3,
+            leftLegY: 0,
+            rightLegY: 0,
+            leftArmY: 0,
+            rightArmY: 0
+        },
+        {
+            leftLegX: -6,
+            rightLegX: 5,
+            leftLegY: 2,
+            rightLegY: -1,
+            leftArmY: -2,
+            rightArmY: 2
+        },
+        {
+            leftLegX: -3,
+            rightLegX: 3,
+            leftLegY: 0,
+            rightLegY: 0,
+            leftArmY: 0,
+            rightArmY: 0
+        },
+        {
+            leftLegX: -5,
+            rightLegX: 6,
+            leftLegY: -1,
+            rightLegY: 2,
+            leftArmY: 2,
+            rightArmY: -2
+        }
+    ];
+
+    const pose =
+        strideFrames[
+            frame %
+            strideFrames.length
+        ];
+
+    const jersey =
+        Phaser.Display.Color.IntegerToColor(
+            style.jerseyColor
+        ).rgba;
+
+    const secondary =
+        Phaser.Display.Color.IntegerToColor(
+            style.secondaryColor
+        ).rgba;
+
+    const helmet =
+        Phaser.Display.Color.IntegerToColor(
+            style.helmetColor
+        ).rgba;
+
+    const pants =
+        Phaser.Display.Color.IntegerToColor(
+            style.pantsColor
+        ).rgba;
+
+    const skin =
+        Phaser.Display.Color.IntegerToColor(
+            style.skinColor
+        ).rgba;
+
+    /*
+     * Soft shadow under the player.
+     */
+    context.fillStyle =
+        "rgba(0,0,0,0.20)";
+
+    context.fillRect(
+        centerX - 12,
+        32,
+        24,
+        8
     );
 
     /*
-     * Skates and separated legs.
+     * Skates and legs.
      */
-    body.fillStyle(
-        0x101820,
-        1
+    context.fillStyle =
+        "#111820";
+
+    context.fillRect(
+        centerX -
+            7 +
+            pose.leftLegX,
+        28 +
+            pose.leftLegY,
+        6,
+        13
     );
 
-    body.fillRoundedRect(
-        leftLegX - 3,
-        9 + pushAmount,
+    context.fillRect(
+        centerX +
+            1 +
+            pose.rightLegX,
+        28 +
+            pose.rightLegY,
         6,
-        13,
+        13
+    );
+
+    context.fillStyle =
+        "#dce8f2";
+
+    context.fillRect(
+        centerX -
+            8 +
+            pose.leftLegX,
+        39 +
+            pose.leftLegY,
+        8,
+        3
+    );
+
+    context.fillRect(
+        centerX +
+            pose.rightLegX,
+        39 +
+            pose.rightLegY,
+        8,
+        3
+    );
+
+    /*
+     * Hockey pants.
+     */
+    context.fillStyle =
+        pants;
+
+    context.fillRect(
+        centerX - 9,
+        24,
+        18,
+        10
+    );
+
+    context.fillStyle =
+        secondary;
+
+    context.fillRect(
+        centerX - 9,
+        24,
+        18,
         2
     );
 
-    body.fillRoundedRect(
-        rightLegX - 3,
-        9 - pushAmount,
+    /*
+     * Wide shoulder pads and jersey.
+     */
+    context.fillStyle =
+        jersey;
+
+    context.fillRect(
+        centerX - 14,
+        12,
+        28,
+        16
+    );
+
+    context.fillStyle =
+        secondary;
+
+    context.fillRect(
+        centerX - 14,
+        17,
+        28,
+        4
+    );
+
+    /*
+     * Arms and gloves counter-swing with the stride.
+     */
+    context.fillStyle =
+        jersey;
+
+    context.fillRect(
+        centerX - 19,
+        15 +
+            pose.leftArmY,
         6,
-        13,
-        2
+        14
     );
 
-    body.fillStyle(
-        0xd7e4ef,
-        1
+    context.fillRect(
+        centerX + 13,
+        15 +
+            pose.rightArmY,
+        6,
+        14
     );
 
-    body.fillRoundedRect(
-        leftLegX - 4,
-        19 + pushAmount,
-        8,
-        3,
-        1
-    );
+    context.fillStyle =
+        helmet;
 
-    body.fillRoundedRect(
-        rightLegX - 4,
-        19 - pushAmount,
-        8,
-        3,
-        1
-    );
-
-    /*
-     * Hockey pants and hips.
-     */
-    body.fillStyle(
-        pantsColor,
-        1
-    );
-
-    body.fillRoundedRect(
-        -10,
-        4,
-        20,
-        11,
-        4
-    );
-
-    body.lineStyle(
-        1,
-        secondaryColor,
-        0.65
-    );
-
-    body.strokeRoundedRect(
-        -10,
-        4,
-        20,
-        11,
-        4
-    );
-
-    /*
-     * Shoulder pads create a wider hockey silhouette.
-     */
-    body.fillStyle(
-        jerseyColor,
-        1
-    );
-
-    body.fillRoundedRect(
-        -15,
-        -10,
-        30,
-        19,
+    context.fillRect(
+        centerX - 20,
+        25 +
+            pose.leftArmY,
+        7,
         6
     );
 
-    body.lineStyle(
+    context.fillRect(
+        centerX + 13,
+        25 +
+            pose.rightArmY,
+        7,
+        6
+    );
+
+    /*
+     * Head, helmet and visor.
+     */
+    context.fillStyle =
+        skin;
+
+    context.fillRect(
+        centerX - 5,
+        6,
+        10,
+        8
+    );
+
+    context.fillStyle =
+        helmet;
+
+    context.fillRect(
+        centerX - 7,
         2,
-        secondaryColor,
-        1
-    );
-
-    body.strokeRoundedRect(
-        -15,
-        -10,
-        30,
-        19,
-        6
-    );
-
-    body.fillStyle(
-        secondaryColor,
-        0.95
-    );
-
-    body.fillRect(
-        -15,
-        -5,
-        30,
-        4
-    );
-
-    /*
-     * Counter-swinging arms and gloves.
-     */
-    body.fillStyle(
-        jerseyColor,
-        1
-    );
-
-    body.fillRoundedRect(
-        leftArmX - 4,
-        -5 - strideAmount * 0.25,
-        8,
-        15,
-        3
-    );
-
-    body.fillRoundedRect(
-        rightArmX - 4,
-        -5 + strideAmount * 0.25,
-        8,
-        15,
-        3
-    );
-
-    body.lineStyle(
-        1,
-        secondaryColor,
-        1
-    );
-
-    body.strokeRoundedRect(
-        leftArmX - 4,
-        -5 - strideAmount * 0.25,
-        8,
-        15,
-        3
-    );
-
-    body.strokeRoundedRect(
-        rightArmX - 4,
-        -5 + strideAmount * 0.25,
-        8,
-        15,
-        3
-    );
-
-    body.fillStyle(
-        helmetColor,
-        1
-    );
-
-    body.fillRoundedRect(
-        leftArmX - 4,
-        6 - strideAmount * 0.25,
-        8,
-        7,
-        2
-    );
-
-    body.fillRoundedRect(
-        rightArmX - 4,
-        6 + strideAmount * 0.25,
-        8,
-        7,
-        2
-    );
-
-    /*
-     * Head and helmet viewed from directly above.
-     */
-    body.fillStyle(
-        skinColor,
-        1
-    );
-
-    body.fillCircle(
-        0,
-        -15,
+        14,
         7
     );
 
-    body.fillStyle(
-        helmetColor,
-        1
-    );
+    context.fillStyle =
+        secondary;
 
-    body.fillRoundedRect(
-        -8,
-        -22,
-        16,
-        9,
-        4
-    );
-
-    body.lineStyle(
+    context.fillRect(
+        centerX - 7,
         2,
-        secondaryColor,
-        1
+        14,
+        2
     );
 
-    body.strokeRoundedRect(
-        -8,
-        -22,
-        16,
+    context.fillStyle =
+        "#bde7f7";
+
+    context.fillRect(
+        centerX - 4,
         9,
-        4
+        8,
+        2
     );
 
-    body.fillStyle(
-        0xaedcf1,
-        0.9
-    );
+    /*
+     * Dark number plate gives the jersey a real uniform look.
+     */
+    context.fillStyle =
+        "rgba(5,16,30,0.72)";
 
-    body.fillRoundedRect(
-        -5,
-        -14,
+    context.fillRect(
+        centerX - 5,
+        22,
         10,
-        3,
-        1
+        6
     );
 
-    /*
-     * Jersey number stays readable without a separate text object.
-     */
-    body.fillStyle(
-        0x0c1624,
-        0.78
+    texture.refresh();
+
+    texture.setFilter(
+        Phaser.Textures.FilterMode.NEAREST
     );
 
-    body.fillRoundedRect(
-        -6,
-        0,
-        12,
-        8,
-        2
-    );
-
-    body.lineStyle(
-        1,
-        secondaryColor,
-        0.8
-    );
-
-    body.strokeRoundedRect(
-        -6,
-        0,
-        12,
-        8,
-        2
-    );
-
-    /*
-     * A tiny number glyph built from text remains attached to the skater.
-     */
-    if (
-        body.numberText
-    ) {
-        body.numberText
-            .setText(number)
-            .setPosition(
-                body.x,
-                body.y + 3
-            )
-            .setRotation(
-                body.rotation
-            );
-    }
+    return textureKey;
 }
 
 function createSkaterBody(
@@ -2607,18 +2581,7 @@ function createSkaterBody(
     y,
     options = {}
 ) {
-    const body =
-        scene.add.graphics()
-            .setPosition(
-                x,
-                y
-            )
-            .setDepth(
-                options.depth ??
-                20
-            );
-
-    body.skaterStyle = {
+    const style = {
         jerseyColor:
             options.jerseyColor ??
             0x1769d2,
@@ -2647,6 +2610,36 @@ function createSkaterBody(
             )
     };
 
+    for (
+        let frame = 0;
+        frame < 4;
+        frame += 1
+    ) {
+        createPixelSkaterTexture(
+            scene,
+            style,
+            frame
+        );
+    }
+
+    const body =
+        scene.add.sprite(
+            x,
+            y,
+            getSkaterTextureKey(
+                style,
+                0
+            )
+        )
+            .setDepth(
+                options.depth ??
+                20
+            )
+            .setScale(0.86);
+
+    body.skaterStyle =
+        style;
+
     body.baseFacingRotation = 0;
 
     body.animationOffset =
@@ -2656,47 +2649,9 @@ function createSkaterBody(
         );
 
     body.lastAnimationFrame =
-        -999;
+        -1;
 
-    body.numberText =
-        scene.add.text(
-            x,
-            y + 3,
-            body.skaterStyle.number,
-            {
-                fontFamily:
-                    "Arial, sans-serif",
-
-                fontSize:
-                    "7px",
-
-                fontStyle:
-                    "bold",
-
-                color:
-                    "#ffffff",
-
-                stroke:
-                    "#000000",
-
-                strokeThickness:
-                    1
-            }
-        )
-            .setOrigin(0.5)
-            .setDepth(
-                (
-                    options.depth ??
-                    20
-                ) + 1
-            );
-
-    drawBirdseyeSkater(
-        body,
-        0,
-        0,
-        false
-    );
+    body.numberText = null;
 
     return body;
 }
@@ -2721,19 +2676,6 @@ function updateSkaterBodyRotation(
 
     body.rotation =
         body.baseFacingRotation;
-
-    if (
-        body.numberText
-    ) {
-        body.numberText
-            .setPosition(
-                body.x,
-                body.y + 3
-            )
-            .setRotation(
-                body.rotation
-            );
-    }
 }
 
 function updateSkaterAnimation(
@@ -2744,7 +2686,8 @@ function updateSkaterAnimation(
     sprinting = false
 ) {
     if (
-        !body
+        !body ||
+        !body.skaterStyle
     ) {
         return;
     }
@@ -2755,92 +2698,54 @@ function updateSkaterAnimation(
             velocityY * velocityY
         );
 
-    const speedRatio =
-        Phaser.Math.Clamp(
-            speed / 180,
-            0,
-            1
-        );
-
-    const frequency =
-        sprinting
-            ? 16
-            : 10;
-
-    const phase =
-        animationClock *
-            frequency +
-        (
-            body.animationOffset ||
-            0
-        );
-
-    const stride =
-        speed < 7
-            ? 0
-            : Math.sin(
-                phase
-            );
-
-    /*
-     * Redraw only when the visible pose changes enough.
-     * This is real leg/arm animation, not whole-body wobbling.
-     */
-    const animationFrame =
-        speed < 7
-            ? 0
-            : Math.round(
-                stride * 4
-            );
+    let frame = 0;
 
     if (
-        animationFrame !==
-            body.lastAnimationFrame ||
-        body.lastSprinting !==
-            sprinting
+        speed > 8
     ) {
-        drawBirdseyeSkater(
-            body,
-            stride,
-            speedRatio,
+        const frameRate =
             sprinting
+                ? 13
+                : 8;
+
+        frame =
+            Math.floor(
+                (
+                    animationClock *
+                    frameRate +
+                    body.animationOffset
+                ) %
+                4
+            );
+    }
+
+    if (
+        frame !==
+        body.lastAnimationFrame
+    ) {
+        body.setTexture(
+            getSkaterTextureKey(
+                body.skaterStyle,
+                frame
+            )
         );
 
         body.lastAnimationFrame =
-            animationFrame;
-
-        body.lastSprinting =
-            sprinting;
+            frame;
     }
 
     body.rotation =
         body.baseFacingRotation;
 
-    body.setScale(
+    const speedScale =
         sprinting &&
         speed > 8
-            ? 1.04
-            : 1
-    );
+            ? 0.91
+            : 0.86;
 
-    if (
-        body.numberText
-    ) {
-        body.numberText
-            .setPosition(
-                body.x,
-                body.y + 3
-            )
-            .setRotation(
-                body.rotation
-            )
-            .setScale(
-                sprinting &&
-                speed > 8
-                    ? 1.04
-                    : 1
-            );
-    }
+    body.setScale(
+        speedScale
+    );
 }
 
 function playCheckAnimation(
@@ -3118,7 +3023,8 @@ function createTeammate(
             }
         )
             .setOrigin(0.5)
-            .setDepth(22);
+            .setDepth(22)
+            .setVisible(false);
 
     const targetRing =
         scene.add.graphics()
@@ -3193,7 +3099,7 @@ function updateTeammateVisuals(
 ) {
     teammate.label.setPosition(
         teammate.body.x,
-        teammate.body.y - 32
+        teammate.body.y - 27
     );
 
     updateSkaterBodyRotation(
@@ -3804,15 +3710,6 @@ function moveTeammateTowardTarget(
         corrected.y
     );
 
-    if (
-        teammate.body.numberText
-    ) {
-        teammate.body.numberText
-            .setPosition(
-                teammate.body.x,
-                teammate.body.y + 3
-            );
-    }
 
     if (
         corrected.hitX
@@ -4157,7 +4054,8 @@ function createOpponent(
             }
         )
             .setOrigin(0.5)
-            .setDepth(22);
+            .setDepth(22)
+            .setVisible(false);
 
     const targetRing =
         scene.add.graphics()
@@ -8957,15 +8855,6 @@ function updatePlayerMovement(
         corrected.y
     );
 
-    if (
-        state.player.numberText
-    ) {
-        state.player.numberText
-            .setPosition(
-                state.player.x,
-                state.player.y + 3
-            );
-    }
 
     if (
         corrected.hitX
@@ -9197,7 +9086,7 @@ function createMobileControls(scene) {
 
     const controlsY =
         Math.min(
-            rink.bottom - 88,
+            rink.bottom - 74,
             scene.scale.height - 145
         );
 
@@ -9216,19 +9105,19 @@ function createMobileControls(scene) {
     createContextualActionButton(
         scene,
         rink.left + 58,
-        controlsY - 78
+        controlsY - 72
     );
 
     createDefenseButton(
         scene,
         rink.centerX,
-        controlsY - 78
+        controlsY - 72
     );
 
     createSprintButton(
         scene,
         rink.right - 58,
-        controlsY - 78
+        controlsY - 72
     );
 }
 
@@ -9450,8 +9339,8 @@ function createDefenseButton(
         scene.add.rectangle(
             x,
             y,
-            92,
-            42,
+            82,
+            38,
             0x596a7b,
             0.82
         )
@@ -11476,15 +11365,6 @@ function resetPlayersForCenterFaceoff(
         rink.centerY + 66
     );
 
-    if (
-        state.player.numberText
-    ) {
-        state.player.numberText
-            .setPosition(
-                state.player.x,
-                state.player.y + 3
-            );
-    }
 
     resetGoalie(
         scene
@@ -11530,15 +11410,6 @@ function resetPlayersForCenterFaceoff(
             position.y
         );
 
-        if (
-            teammate.body.numberText
-        ) {
-            teammate.body.numberText
-                .setPosition(
-                    position.x,
-                    position.y + 3
-                );
-        }
 
         teammate.velocityX = 0;
         teammate.velocityY = 0;
@@ -11604,15 +11475,6 @@ function resetPlayersForCenterFaceoff(
             position.y
         );
 
-        if (
-            opponent.body.numberText
-        ) {
-            opponent.body.numberText
-                .setPosition(
-                    position.x,
-                    position.y + 3
-                );
-        }
 
         opponent.velocityX = 0;
         opponent.velocityY = 0;

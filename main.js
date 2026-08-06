@@ -1,6 +1,6 @@
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.0.76
+   VERSION 0.0.77
 
    CONTROLS
    - Left joystick: skate
@@ -445,7 +445,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.0.76",
+            "Version 0.0.77",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -1850,6 +1850,9 @@ function chooseTeammateTarget(
     const owner =
         state.possession.owner;
 
+    const rink =
+        state.rink;
+
     if (
         owner === teammate
     ) {
@@ -1885,12 +1888,6 @@ function chooseTeammateTarget(
         return;
     }
 
-    /*
-     * Loose-puck hockey logic:
-     * - The controlled player gets first opportunity when nearby.
-     * - Only one teammate may pressure the puck.
-     * - The other teammate finds open ice instead of joining a pile-up.
-     */
     const chaser =
         findLoosePuckChaser(
             state
@@ -1899,105 +1896,46 @@ function chooseTeammateTarget(
     if (
         chaser === teammate
     ) {
-        chooseLoosePuckPressureTarget(
-            state,
-            teammate
-        );
+        const puckSpeed =
+            Math.sqrt(
+                state.puckVelocityX *
+                    state.puckVelocityX +
+                state.puckVelocityY *
+                    state.puckVelocityY
+            );
+
+        const leadTime =
+            Phaser.Math.Clamp(
+                puckSpeed / 900,
+                0.03,
+                0.16
+            );
+
+        teammate.targetX =
+            state.puck.x +
+            state.puckVelocityX *
+                leadTime;
+
+        teammate.targetY =
+            state.puck.y +
+            state.puckVelocityY *
+                leadTime;
 
         return;
     }
 
-    chooseLoosePuckSupportTarget(
-        state,
-        teammate,
-        chaser
-    );
-}
-
-function chooseLoosePuckPressureTarget(
-    state,
-    teammate
-) {
-    const puckSpeed =
-        Math.sqrt(
-            state.puckVelocityX *
-                state.puckVelocityX +
-            state.puckVelocityY *
-                state.puckVelocityY
-        );
-
-    const leadTime =
-        Phaser.Math.Clamp(
-            puckSpeed / 850,
-            0.04,
-            0.22
-        );
-
-    teammate.targetX =
-        state.puck.x +
-        state.puckVelocityX *
-            leadTime;
-
-    teammate.targetY =
-        state.puck.y +
-        state.puckVelocityY *
-            leadTime;
-}
-
-function chooseLoosePuckSupportTarget(
-    state,
-    teammate,
-    chaser
-) {
-    const rink =
-        state.rink;
-
-    const puckAboveCenter =
+    const puckInOffensiveHalf =
         state.puck.y <
         rink.centerY;
 
-    const playerCloserThanTeammates =
-        Phaser.Math.Distance.Between(
-            state.player.x,
-            state.player.y,
-            state.puck.x,
-            state.puck.y
-        ) < 105;
-
-    /*
-     * When the player is collecting the puck, teammates spread forward
-     * into passing lanes rather than skating through the player.
-     */
     if (
-        !chaser &&
-        playerCloserThanTeammates
-    ) {
-        teammate.targetX =
-            rink.centerX +
-            teammate.laneOffsetX;
-
-        teammate.targetY =
-            Phaser.Math.Clamp(
-                state.puck.y - 72,
-                rink.top + 105,
-                rink.centerY + 50
-            );
-
-        return;
-    }
-
-    /*
-     * In the offensive half, create a triangle:
-     * one skater pressures, one becomes a far-side passing option.
-     */
-    if (
-        puckAboveCenter
+        puckInOffensiveHalf
     ) {
         const puckOnLeft =
             state.puck.x <
             rink.centerX;
 
-        const farSide =
+        const teammateOnFarSide =
             (
                 puckOnLeft &&
                 teammate.side === "right"
@@ -2016,27 +1954,54 @@ function chooseLoosePuckSupportTarget(
             );
 
         teammate.targetY =
-            farSide
+            teammateOnFarSide
                 ? state.offensiveGoal.y + 92
                 : Phaser.Math.Clamp(
-                    state.puck.y + 68,
-                    state.offensiveGoal.y + 125,
+                    state.puck.y + 62,
+                    state.offensiveGoal.y + 120,
                     rink.centerY - 12
                 );
 
         return;
     }
 
-    /*
-     * In the defensive half, one teammate stays underneath the puck
-     * while the other gives the controlled player a breakout outlet.
-     */
-    const isLowSupport =
-        teammate.side ===
+    const playerNearPuck =
+        Phaser.Math.Distance.Between(
+            state.player.x,
+            state.player.y,
+            state.puck.x,
+            state.puck.y
+        ) <= 112;
+
+    if (
+        playerNearPuck
+    ) {
+        teammate.targetX =
+            rink.centerX +
+            teammate.laneOffsetX;
+
+        teammate.targetY =
+            Phaser.Math.Clamp(
+                state.puck.y - 78,
+                rink.centerY - 28,
+                rink.bottom - 125
+            );
+
+        return;
+    }
+
+    const puckOnLeft =
+        state.puck.x <
+        rink.centerX;
+
+    const teammateOnPuckSide =
         (
-            state.puck.x < rink.centerX
-                ? "left"
-                : "right"
+            puckOnLeft &&
+            teammate.side === "left"
+        ) ||
+        (
+            !puckOnLeft &&
+            teammate.side === "right"
         );
 
     teammate.targetX =
@@ -2048,15 +2013,15 @@ function chooseLoosePuckSupportTarget(
         );
 
     teammate.targetY =
-        isLowSupport
+        teammateOnPuckSide
             ? Phaser.Math.Clamp(
-                state.puck.y + 58,
-                rink.centerY + 12,
+                state.puck.y + 52,
+                rink.centerY + 10,
                 rink.bottom - 105
             )
             : Phaser.Math.Clamp(
-                state.puck.y - 88,
-                rink.centerY - 35,
+                state.puck.y - 92,
+                rink.centerY - 40,
                 rink.bottom - 145
             );
 }
@@ -2283,25 +2248,19 @@ function findLoosePuckChaser(
     }
 
     /*
-     * Give the human-controlled skater a generous right of way.
-     * A teammate only takes over when they are clearly much closer,
-     * or when the player is too far away to reasonably contest it.
+     * Give the controlled player first rights to a nearby loose puck.
+     * A teammate only pressures when clearly closer or when the player
+     * is too far away to reasonably get there.
      */
     if (
-        playerDistance <= 92
+        playerDistance <= 108
     ) {
         return null;
     }
 
     if (
         playerDistance <=
-        closestDistance + 46
-    ) {
-        return null;
-    }
-
-    if (
-        closestDistance > 175
+        closestDistance + 42
     ) {
         return null;
     }
@@ -8161,10 +8120,4 @@ function clampPointInsideRoundedRink(
     ) {
         cornerX =
             rink.right -
-            rink.cornerRadius;
-
-        cornerY =
-            rink.top +
-            rink.cornerRadius;
-    } else if (
- 
+   

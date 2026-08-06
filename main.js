@@ -3,7 +3,7 @@
 
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.1.04
+   VERSION 0.1.05
 
    CONTROLS
    - Left joystick: skate
@@ -55,6 +55,7 @@ const config = {
     },
 
     scene: {
+        preload,
         create,
         update
     }
@@ -109,6 +110,23 @@ try {
     }
 
     throw error;
+}
+
+/* =========================================================
+   EXTERNAL PLAYER SPRITE
+========================================================= */
+
+const PLAYER_BLUE_IDLE_KEY =
+    "player-blue-idle";
+
+const PLAYER_BLUE_IDLE_PATH =
+    "assets/sprites/4E800B5A-52F2-4C86-9793-A167B3FD4453.png";
+
+function preload() {
+    this.load.image(
+        PLAYER_BLUE_IDLE_KEY,
+        PLAYER_BLUE_IDLE_PATH
+    );
 }
 
 /* =========================================================
@@ -184,6 +202,14 @@ function create() {
         player: null,
         playerStick: null,
         playerIndicator: null,
+
+        playerIdentity: {
+            lastName: "KNIGHT",
+            jerseyNumber: "9"
+        },
+
+        playerNameText: null,
+        playerNumberText: null,
 
         teammates: [],
         opponents: [],
@@ -593,7 +619,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.1.04",
+            "Version 0.1.05",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -2956,10 +2982,7 @@ function updateSkaterAnimation(
     animationClock,
     sprinting = false
 ) {
-    if (
-        !body ||
-        !body.skaterStyle
-    ) {
+    if (!body) {
         return;
     }
 
@@ -2968,6 +2991,42 @@ function updateSkaterAnimation(
             velocityX * velocityX +
             velocityY * velocityY
         );
+
+    if (body.usesExternalSprite) {
+        body.rotation =
+            body.baseFacingRotation;
+
+        const moving =
+            speed > 8;
+
+        const pulse =
+            moving
+                ? Math.sin(
+                    animationClock *
+                    (
+                        sprinting
+                            ? 18
+                            : 12
+                    )
+                ) * 0.025
+                : 0;
+
+        const baseScale =
+            sprinting && moving
+                ? 1.06
+                : 1;
+
+        body.setScale(
+            baseScale + pulse,
+            baseScale - pulse * 0.5
+        );
+
+        return;
+    }
+
+    if (!body.skaterStyle) {
+        return;
+    }
 
     let frame = 0;
 
@@ -3115,31 +3174,133 @@ function createPlayer(scene) {
     const rink =
         state.rink;
 
-    state.player =
-        createSkaterBody(
-            scene,
-            rink.centerX,
-            rink.centerY + 66,
-            {
-                jerseyColor:
-                    0x1769d2,
+    if (
+        scene.textures.exists(
+            PLAYER_BLUE_IDLE_KEY
+        )
+    ) {
+        const playerImage =
+            scene.add.image(
+                0,
+                0,
+                PLAYER_BLUE_IDLE_KEY
+            )
+                .setOrigin(0.5)
+                .setDisplaySize(
+                    64,
+                    72
+                );
 
-                secondaryColor:
-                    0xffffff,
+        state.playerNameText =
+            scene.add.text(
+                0,
+                -2,
+                state.playerIdentity.lastName,
+                {
+                    fontFamily:
+                        "Arial Black, Arial, sans-serif",
 
-                helmetColor:
-                    0x0f4f9b,
+                    fontSize:
+                        "5px",
 
-                pantsColor:
-                    0x102d4e,
+                    fontStyle:
+                        "bold",
 
-                number:
-                    "9",
+                    color:
+                        "#ffffff",
 
-                depth:
-                    20
-            }
+                    stroke:
+                        "#071426",
+
+                    strokeThickness:
+                        1,
+
+                    align:
+                        "center"
+                }
+            )
+                .setOrigin(0.5);
+
+        state.playerNumberText =
+            scene.add.text(
+                0,
+                7,
+                state.playerIdentity.jerseyNumber,
+                {
+                    fontFamily:
+                        "Arial Black, Arial, sans-serif",
+
+                    fontSize:
+                        "11px",
+
+                    fontStyle:
+                        "bold",
+
+                    color:
+                        "#ffffff",
+
+                    stroke:
+                        "#071426",
+
+                    strokeThickness:
+                        2,
+
+                    align:
+                        "center"
+                }
+            )
+                .setOrigin(0.5);
+
+        state.player =
+            scene.add.container(
+                rink.centerX,
+                rink.centerY + 66,
+                [
+                    playerImage,
+                    state.playerNameText,
+                    state.playerNumberText
+                ]
+            )
+                .setDepth(20);
+
+        state.player.usesExternalSprite =
+            true;
+
+        state.player.baseFacingRotation = 0;
+        state.player.animationOffset = 0;
+        state.player.lastAnimationFrame = 0;
+    } else {
+        console.warn(
+            "Player sprite failed to load; using generated fallback.",
+            PLAYER_BLUE_IDLE_PATH
         );
+
+        state.player =
+            createSkaterBody(
+                scene,
+                rink.centerX,
+                rink.centerY + 66,
+                {
+                    jerseyColor:
+                        0x1769d2,
+
+                    secondaryColor:
+                        0xffffff,
+
+                    helmetColor:
+                        0x0f4f9b,
+
+                    pantsColor:
+                        0x102d4e,
+
+                    number:
+                        "9",
+
+                    depth:
+                        20
+                }
+            );
+    }
 
     state.playerStick =
         scene.add.graphics()

@@ -1,6 +1,9 @@
+(() => {
+"use strict";
+
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.0.78
+   VERSION 0.0.79
 
    CONTROLS
    - Left joystick: skate
@@ -57,8 +60,56 @@ const config = {
     }
 };
 
-const game =
-    new Phaser.Game(config);
+/*
+ * Keep the entire game isolated from variables created by index.html
+ * or by an older cached copy of main.js.
+ */
+let hockeyLegacyGame = null;
+
+try {
+    if (
+        typeof Phaser === "undefined"
+    ) {
+        throw new Error(
+            "Phaser is not available"
+        );
+    }
+
+    hockeyLegacyGame =
+        new Phaser.Game(config);
+
+    window.hockeyLegacyGame =
+        hockeyLegacyGame;
+
+    window.hockeyLegacyMainLoaded =
+        true;
+} catch (error) {
+    console.error(
+        "Hockey Legacy startup failed:",
+        error
+    );
+
+    const status =
+        document.getElementById(
+            "loading-status"
+        );
+
+    if (status) {
+        status.style.background =
+            "#8f1515";
+
+        status.textContent =
+            "STARTUP ERROR: " +
+            (
+                error &&
+                error.message
+                    ? error.message
+                    : String(error)
+            );
+    }
+
+    throw error;
+}
 
 /* =========================================================
    CREATE
@@ -445,7 +496,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.0.78",
+            "Version 0.0.79",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -4127,7 +4178,7 @@ function passPuckToTeammate(
 
     flashActionButton(
         scene,
-        `PASS ÃÂ¢ÃÂÃÂ ${teammate.name}`,
+        `PASS ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ ${teammate.name}`,
         0x2477c9
     );
 }
@@ -8196,3 +8247,5 @@ function clampPointInsideRoundedRink(
         hitY
     };
 }
+
+})();

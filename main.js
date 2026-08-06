@@ -1,6 +1,6 @@
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.0.73
+   VERSION 0.0.74
 
    CONTROLS
    - Left joystick: skate
@@ -158,11 +158,11 @@ function create() {
             acceleration: 335,
             deceleration: 470,
 
-            visualWidth: 25,
-            visualHeight: 22,
+            visualWidth: 19,
+            visualHeight: 18,
 
-            saveHalfWidth: 9,
-            saveHalfHeight: 10,
+            saveHalfWidth: 6.5,
+            saveHalfHeight: 8,
 
             reactionTimer: 0,
             reactionDelay: 0.18,
@@ -445,7 +445,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.0.73",
+            "Version 0.0.74",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -2721,9 +2721,9 @@ function createGoalie(scene) {
     goalie.mask =
         scene.add.rectangle(
             goalie.x,
-            goalie.y - 7,
-            12,
-            7,
+            goalie.y - 6,
+            9,
+            6,
             0xd8e5ef,
             1
         )
@@ -2737,9 +2737,9 @@ function createGoalie(scene) {
     goalie.pads =
         scene.add.rectangle(
             goalie.x,
-            goalie.y + 8,
-            23,
-            7,
+            goalie.y + 6,
+            17,
+            6,
             0xffffff,
             1
         )
@@ -2752,9 +2752,9 @@ function createGoalie(scene) {
 
     goalie.glove =
         scene.add.circle(
-            goalie.x - 15,
+            goalie.x - 11,
             goalie.y,
-            5,
+            4,
             0x8f2020,
             1
         )
@@ -2767,10 +2767,10 @@ function createGoalie(scene) {
 
     goalie.blocker =
         scene.add.rectangle(
-            goalie.x + 15,
+            goalie.x + 11,
             goalie.y,
-            8,
-            9,
+            6,
+            7,
             0x8f2020,
             1
         )
@@ -2788,7 +2788,7 @@ function createGoalie(scene) {
     goalie.label =
         scene.add.text(
             goalie.x,
-            goalie.y - 25,
+            goalie.y - 22,
             "G",
             {
                 fontFamily:
@@ -2820,7 +2820,7 @@ function createGoalie(scene) {
     goalie.saveFlash =
         scene.add.text(
             goalie.x,
-            goalie.y + 31,
+            goalie.y + 27,
             "SAVE!",
             {
                 fontFamily:
@@ -3004,8 +3004,8 @@ function updateGoalie(
     goalie.x =
         Phaser.Math.Clamp(
             goalie.x,
-            state.rink.centerX - 19,
-            state.rink.centerX + 19
+            state.rink.centerX - 17,
+            state.rink.centerX + 17
         );
 
     goalie.y =
@@ -3040,23 +3040,23 @@ function updateGoalieVisuals(scene) {
     );
 
     goalie.glove.setPosition(
-        goalie.x - 15,
+        goalie.x - 11,
         goalie.y
     );
 
     goalie.blocker.setPosition(
-        goalie.x + 15,
+        goalie.x + 11,
         goalie.y
     );
 
     goalie.label.setPosition(
         goalie.x,
-        goalie.y - 25
+        goalie.y - 22
     );
 
     goalie.saveFlash.setPosition(
         goalie.x,
-        goalie.y + 31
+        goalie.y + 27
     );
 
     goalie.stick.clear();
@@ -3068,10 +3068,10 @@ function updateGoalieVisuals(scene) {
     );
 
     goalie.stick.lineBetween(
-        goalie.x + 12,
-        goalie.y + 3,
-        goalie.x + 18,
-        goalie.y + 17
+        goalie.x + 9,
+        goalie.y + 2,
+        goalie.x + 14,
+        goalie.y + 14
     );
 
     goalie.stick.lineStyle(
@@ -3081,10 +3081,10 @@ function updateGoalieVisuals(scene) {
     );
 
     goalie.stick.lineBetween(
-        goalie.x + 18,
-        goalie.y + 17,
-        goalie.x + 8,
-        goalie.y + 19
+        goalie.x + 14,
+        goalie.y + 14,
+        goalie.x + 6,
+        goalie.y + 16
     );
 }
 
@@ -8100,4 +8100,7 @@ function clampPointInsideRoundedRink(
     return {
         x: correctedX,
         y: correctedY,
-  
+        hitX,
+        hitY
+    };
+}

@@ -1,6 +1,6 @@
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.0.77
+   VERSION 0.0.78
 
    CONTROLS
    - Left joystick: skate
@@ -445,7 +445,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.0.77",
+            "Version 0.0.78",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -486,7 +486,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             buttonY,
-            "Ã¢ÂÂ¶ PLAY",
+            "â¶ PLAY",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -4127,7 +4127,7 @@ function passPuckToTeammate(
 
     flashActionButton(
         scene,
-        `PASS Ã¢ÂÂ ${teammate.name}`,
+        `PASS ÃÂ¢ÃÂÃÂ ${teammate.name}`,
         0x2477c9
     );
 }
@@ -8120,4 +8120,79 @@ function clampPointInsideRoundedRink(
     ) {
         cornerX =
             rink.right -
-   
+            rink.cornerRadius;
+
+        cornerY =
+            rink.top +
+            rink.cornerRadius;
+    } else if (
+        isLeft &&
+        isBottom
+    ) {
+        cornerX =
+            rink.left +
+            rink.cornerRadius;
+
+        cornerY =
+            rink.bottom -
+            rink.cornerRadius;
+    } else if (
+        isRight &&
+        isBottom
+    ) {
+        cornerX =
+            rink.right -
+            rink.cornerRadius;
+
+        cornerY =
+            rink.bottom -
+            rink.cornerRadius;
+    }
+
+    if (
+        cornerX !== null &&
+        cornerY !== null
+    ) {
+        const deltaX =
+            correctedX -
+            cornerX;
+
+        const deltaY =
+            correctedY -
+            cornerY;
+
+        const distance =
+            Math.sqrt(
+                deltaX * deltaX +
+                deltaY * deltaY
+            );
+
+        if (
+            distance >
+                innerCornerRadius &&
+            distance > 0
+        ) {
+            correctedX =
+                cornerX +
+                deltaX /
+                distance *
+                innerCornerRadius;
+
+            correctedY =
+                cornerY +
+                deltaY /
+                distance *
+                innerCornerRadius;
+
+            hitX = true;
+            hitY = true;
+        }
+    }
+
+    return {
+        x: correctedX,
+        y: correctedY,
+        hitX,
+        hitY
+    };
+}

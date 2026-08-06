@@ -3,7 +3,7 @@
 
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.0.80
+   VERSION 0.0.81
 
    CONTROLS
    - Left joystick: skate
@@ -477,10 +477,10 @@ function createMainMenu(scene) {
         titleY + 78;
 
     const toggleY =
-        versionY + 70;
+        versionY + 72;
 
     const buttonY =
-        versionY + 145;
+        versionY + 152;
 
     const titleText =
         scene.add.text(
@@ -517,7 +517,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.0.80",
+            "Version 0.0.81",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -539,8 +539,8 @@ function createMainMenu(scene) {
         scene.add.rectangle(
             rink.centerX,
             toggleY,
-            210,
-            46,
+            238,
+            52,
             0x596a7b,
             0.96
         )
@@ -564,7 +564,7 @@ function createMainMenu(scene) {
                     "Arial, sans-serif",
 
                 fontSize:
-                    "18px",
+                    "17px",
 
                 fontStyle:
                     "bold",
@@ -636,11 +636,33 @@ function createMainMenu(scene) {
         togglePlayerStats
     );
 
+    const statsToggleHint =
+        scene.add.text(
+            rink.centerX,
+            toggleY + 37,
+            "Tap to show in-game stats",
+            {
+                fontFamily:
+                    "Arial, sans-serif",
+
+                fontSize:
+                    "11px",
+
+                fontStyle:
+                    "bold",
+
+                color:
+                    "#17375e"
+            }
+        )
+            .setOrigin(0.5)
+            .setDepth(301);
+
     const button =
         scene.add.rectangle(
             rink.centerX,
             buttonY,
-            190,
+            210,
             66,
             0x17375e,
             0.98
@@ -659,7 +681,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             buttonY,
-            "â¶ PLAY",
+            "PLAY",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -711,6 +733,9 @@ function createMainMenu(scene) {
             .setVisible(false);
 
         statsToggleText
+            .setVisible(false);
+
+        statsToggleHint
             .setVisible(false);
 
         drawRink(

@@ -3,11 +3,11 @@
 
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.1.08
+   VERSION 0.1.10
 
    CONTROLS
    - Left joystick: skate
-   - Right joystick: always shoot
+   - Right joystick: pull backward, release to shoot forward
    - PASS button: pass while you have the puck
    - CALL PASS button: request puck from teammate
    - Sprint button: toggle sprint
@@ -126,10 +126,77 @@ const PLAYER_BLUE_TRIMMED_KEY =
     "player-blue-idle-trimmed";
 
 function preload() {
-    this.load.image(
-        PLAYER_BLUE_IDLE_KEY,
-        PLAYER_BLUE_IDLE_PATH
-    );
+    /*
+     * The embedded player image is decoded with the browser's native Image
+     * object during create(). Phaser's normal loader was unreliable with a
+     * large data URL on iPhone Safari.
+     */
+}
+
+function prepareEmbeddedPlayerTexture(scene) {
+    if (
+        scene.textures.exists(
+            PLAYER_BLUE_TRIMMED_KEY
+        ) ||
+        scene.textures.exists(
+            PLAYER_BLUE_IDLE_KEY
+        )
+    ) {
+        createTrimmedPlayerTexture(scene);
+        return Promise.resolve(true);
+    }
+
+    return new Promise(resolve => {
+        const sourceImage = new Image();
+
+        sourceImage.decoding = "async";
+
+        sourceImage.onload = () => {
+            try {
+                if (
+                    !scene.textures.exists(
+                        PLAYER_BLUE_IDLE_KEY
+                    )
+                ) {
+                    scene.textures.addImage(
+                        PLAYER_BLUE_IDLE_KEY,
+                        sourceImage
+                    );
+                }
+
+                const prepared =
+                    createTrimmedPlayerTexture(
+                        scene
+                    );
+
+                console.info(
+                    "Embedded player sprite prepared:",
+                    prepared
+                );
+
+                resolve(prepared);
+            } catch (error) {
+                console.warn(
+                    "Embedded player sprite preparation failed:",
+                    error
+                );
+
+                resolve(false);
+            }
+        };
+
+        sourceImage.onerror = error => {
+            console.warn(
+                "Embedded player image could not be decoded:",
+                error
+            );
+
+            resolve(false);
+        };
+
+        sourceImage.src =
+            PLAYER_BLUE_IDLE_PATH;
+    });
 }
 
 function createTrimmedPlayerTexture(scene) {
@@ -363,8 +430,6 @@ function createTrimmedPlayerTexture(scene) {
 function create() {
     const scene = this;
 
-    createTrimmedPlayerTexture(scene);
-
     scene.cameras.main
         .setRoundPixels(true);
 
@@ -453,7 +518,7 @@ function create() {
             pressureOwner: null,
             pressureChallenger: null,
             pressureTime: 0,
-            pressureNeeded: 0.30
+            pressureNeeded: 0.19
         },
 
         animationClock: 0,
@@ -467,10 +532,10 @@ function create() {
         },
 
         defenseAssist: {
-            range: 52,
-            autoFaceStrength: 0.32,
-            checkLunge: 26,
-            pokeRange: 54
+            range: 66,
+            autoFaceStrength: 0.48,
+            checkLunge: 34,
+            pokeRange: 66
         },
 
         goalie: {
@@ -653,7 +718,7 @@ function create() {
             label: null,
 
             cooldown: 0,
-            cooldownLength: 0.48,
+            cooldownLength: 0.36,
 
             flashTimer: null
         },
@@ -716,7 +781,18 @@ function create() {
         }
     };
 
-    createMainMenu(scene);
+    prepareEmbeddedPlayerTexture(scene)
+        .then(() => {
+            createMainMenu(scene);
+        })
+        .catch(error => {
+            console.warn(
+                "Player sprite setup failed before menu:",
+                error
+            );
+
+            createMainMenu(scene);
+        });
 
     scene.input.on(
         "pointermove",
@@ -848,7 +924,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.1.08",
+            "Version 0.1.10",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -3161,7 +3237,7 @@ function createSkaterBody(
                 options.depth ??
                 20
             )
-            .setScale(1.02);
+            .setScale(0.84);
 
     body.skaterStyle =
         style;
@@ -3242,7 +3318,7 @@ function updateSkaterAnimation(
 
         const baseScale =
             sprinting && moving
-                ? 1.06
+                ? 1.03
                 : 1;
 
         body.setScale(
@@ -3299,8 +3375,8 @@ function updateSkaterAnimation(
     const speedScale =
         sprinting &&
         speed > 8
-            ? 1.08
-            : 1.02;
+            ? 0.90
+            : 0.84;
 
     body.setScale(
         speedScale
@@ -3342,10 +3418,10 @@ function playCheckAnimation(
             facingY * 12,
 
         scaleX:
-            1.08,
+            body.scaleX * 1.06,
 
         scaleY:
-            0.94,
+            body.scaleY * 0.94,
 
         duration:
             90,
@@ -3423,8 +3499,8 @@ function createPlayer(scene) {
             )
                 .setOrigin(0.5)
                 .setDisplaySize(
-                    64,
-                    72
+                    52,
+                    59
                 );
 
         state.playerNameText =
@@ -5522,7 +5598,7 @@ function updatePuckBattles(
             );
 
         if (
-            distance > 28 ||
+            distance > 34 ||
             distance < 0.001
         ) {
             continue;
@@ -5573,10 +5649,10 @@ function updatePuckBattles(
 
         const pressureScore =
             (
-                28 -
+                34 -
                 distance
             ) *
-            0.055 +
+            0.065 +
             facingDot *
             0.9 +
             Phaser.Math.Clamp(
@@ -5649,7 +5725,7 @@ function updatePuckBattles(
         challengerBody
     );
 
-    battle.cooldown = 0.58;
+    battle.cooldown = 0.42;
     battle.looseTimer = 0.32;
     battle.lastContact =
         bestChallenger;
@@ -7644,8 +7720,8 @@ function createContextualActionButton(
         scene.add.rectangle(
             x,
             y,
-            98,
-            34,
+            92,
+            36,
             0x2477c9,
             0.98
         )
@@ -7881,18 +7957,18 @@ function attemptPlayerDefensiveAction(
             directionY;
 
     let successChance =
-        0.46;
+        0.66;
 
     if (
         distance < 34
     ) {
-        successChance += 0.16;
+        successChance += 0.18;
     }
 
     if (
         facingDot > 0.35
     ) {
-        successChance += 0.13;
+        successChance += 0.12;
     }
 
     const playerSpeed =
@@ -7906,14 +7982,14 @@ function attemptPlayerDefensiveAction(
     if (
         playerSpeed > 105
     ) {
-        successChance += 0.08;
+        successChance += 0.06;
     }
 
     successChance =
         Phaser.Math.Clamp(
             successChance,
-            0.35,
-            0.78
+            0.58,
+            0.94
         );
 
     /*
@@ -9910,21 +9986,25 @@ function createMobileControls(scene) {
         controlsY
     );
 
-    createContextualActionButton(
-        scene,
-        rink.left + 58,
-        controlsY - 72
-    );
-
     createDefenseButton(
         scene,
-        rink.centerX,
+        rink.left + 64,
         controlsY - 72
     );
 
     createSprintButton(
         scene,
-        rink.right - 58,
+        rink.centerX,
+        controlsY - 72
+    );
+
+    /*
+     * PASS / CALL PASS belongs beside the shooting controls so the player's
+     * right thumb handles all puck actions without crossing the screen.
+     */
+    createContextualActionButton(
+        scene,
+        rink.right - 64,
         controlsY - 72
     );
 }
@@ -10826,11 +10906,22 @@ function updateAimFromPointer(
         return;
     }
 
-    const directionX =
+    /*
+     * Slingshot shooting:
+     * drag the stick backward and release to shoot in the opposite direction.
+     * Pulling down therefore shoots toward the offensive goal at the top.
+     */
+    const dragDirectionX =
         deltaX / distance;
 
-    const directionY =
+    const dragDirectionY =
         deltaY / distance;
+
+    const shotDirectionX =
+        -dragDirectionX;
+
+    const shotDirectionY =
+        -dragDirectionY;
 
     const clampedDistance =
         Math.min(
@@ -10839,10 +10930,10 @@ function updateAimFromPointer(
         );
 
     aim.directionX =
-        directionX;
+        shotDirectionX;
 
     aim.directionY =
-        directionY;
+        shotDirectionY;
 
     aim.distance =
         clampedDistance;
@@ -10857,12 +10948,12 @@ function updateAimFromPointer(
 
     const knobX =
         aim.centerX +
-        directionX *
+        dragDirectionX *
         clampedDistance;
 
     const knobY =
         aim.centerY +
-        directionY *
+        dragDirectionY *
         clampedDistance;
 
     aim.knob.setPosition(
@@ -10877,8 +10968,8 @@ function updateAimFromPointer(
 
     state.targetFacingAngle =
         Math.atan2(
-            directionY,
-            directionX
+            shotDirectionY,
+            shotDirectionX
         );
 }
 

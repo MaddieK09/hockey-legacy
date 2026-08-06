@@ -1,6 +1,6 @@
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.0.72
+   VERSION 0.0.73
 
    CONTROLS
    - Left joystick: skate
@@ -154,18 +154,18 @@ function create() {
             homeY: rink.top + 63,
 
             velocityX: 0,
-            maximumSpeed: 92,
-            acceleration: 390,
-            deceleration: 540,
+            maximumSpeed: 76,
+            acceleration: 335,
+            deceleration: 470,
 
-            visualWidth: 30,
-            visualHeight: 26,
+            visualWidth: 25,
+            visualHeight: 22,
 
-            saveHalfWidth: 12,
-            saveHalfHeight: 12,
+            saveHalfWidth: 9,
+            saveHalfHeight: 10,
 
             reactionTimer: 0,
-            reactionDelay: 0.12,
+            reactionDelay: 0.18,
             trackedTargetX: rink.centerX,
             trackingError: 0,
 
@@ -445,7 +445,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.0.72",
+            "Version 0.0.73",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -2722,8 +2722,8 @@ function createGoalie(scene) {
         scene.add.rectangle(
             goalie.x,
             goalie.y - 7,
-            14,
-            8,
+            12,
+            7,
             0xd8e5ef,
             1
         )
@@ -2738,8 +2738,8 @@ function createGoalie(scene) {
         scene.add.rectangle(
             goalie.x,
             goalie.y + 8,
-            27,
-            8,
+            23,
+            7,
             0xffffff,
             1
         )
@@ -2752,7 +2752,7 @@ function createGoalie(scene) {
 
     goalie.glove =
         scene.add.circle(
-            goalie.x - 18,
+            goalie.x - 15,
             goalie.y,
             5,
             0x8f2020,
@@ -2767,10 +2767,10 @@ function createGoalie(scene) {
 
     goalie.blocker =
         scene.add.rectangle(
-            goalie.x + 18,
+            goalie.x + 15,
             goalie.y,
+            8,
             9,
-            10,
             0x8f2020,
             1
         )
@@ -2946,16 +2946,16 @@ function updateGoalie(
         /* Small tracking mistakes stop the goalie being robotic. */
         goalie.trackingError =
             Phaser.Math.FloatBetween(
-                -7,
-                7
+                -10,
+                10
             );
 
         goalie.trackedTargetX =
             Phaser.Math.Clamp(
                 desiredTargetX +
                     goalie.trackingError,
-                state.rink.centerX - 21,
-                state.rink.centerX + 21
+                state.rink.centerX - 19,
+                state.rink.centerX + 19
             );
     }
 
@@ -3004,8 +3004,8 @@ function updateGoalie(
     goalie.x =
         Phaser.Math.Clamp(
             goalie.x,
-            state.rink.centerX - 21,
-            state.rink.centerX + 21
+            state.rink.centerX - 19,
+            state.rink.centerX + 19
         );
 
     goalie.y =
@@ -3040,12 +3040,12 @@ function updateGoalieVisuals(scene) {
     );
 
     goalie.glove.setPosition(
-        goalie.x - 18,
+        goalie.x - 15,
         goalie.y
     );
 
     goalie.blocker.setPosition(
-        goalie.x + 18,
+        goalie.x + 15,
         goalie.y
     );
 
@@ -3068,10 +3068,10 @@ function updateGoalieVisuals(scene) {
     );
 
     goalie.stick.lineBetween(
-        goalie.x + 15,
+        goalie.x + 12,
         goalie.y + 3,
-        goalie.x + 21,
-        goalie.y + 19
+        goalie.x + 18,
+        goalie.y + 17
     );
 
     goalie.stick.lineStyle(
@@ -3081,10 +3081,10 @@ function updateGoalieVisuals(scene) {
     );
 
     goalie.stick.lineBetween(
-        goalie.x + 21,
-        goalie.y + 19,
-        goalie.x + 10,
-        goalie.y + 21
+        goalie.x + 18,
+        goalie.y + 17,
+        goalie.x + 8,
+        goalie.y + 19
     );
 }
 
@@ -3164,20 +3164,20 @@ function handleGoalieSave(
         );
 
     /*
-     * Saves are likely but never automatic. Edge shots, hard
-     * shots and a goalie moving the wrong direction all lower
-     * the chance. This is what makes scoring possible.
+     * Saves are deliberately imperfect. Corner shots, hard shots,
+     * quick releases and catching the goalie moving the wrong way
+     * now have a much stronger chance of scoring.
      */
     const edgeDifficulty =
-        Math.abs(offset) * 0.34;
+        Math.abs(offset) * 0.46;
 
     const speedDifficulty =
         Phaser.Math.Clamp(
             (
-                incomingSpeed - 260
-            ) / 700,
+                incomingSpeed - 230
+            ) / 560,
             0,
-            0.22
+            0.3
         );
 
     const movingWrongWay =
@@ -3196,17 +3196,17 @@ function handleGoalieSave(
 
     const movementPenalty =
         movingWrongWay
-            ? 0.12
+            ? 0.18
             : 0;
 
     const saveChance =
         Phaser.Math.Clamp(
-            0.84 -
+            0.66 -
                 edgeDifficulty -
                 speedDifficulty -
                 movementPenalty,
-            0.28,
-            0.9
+            0.12,
+            0.78
         );
 
     if (
@@ -8100,7 +8100,4 @@ function clampPointInsideRoundedRink(
     return {
         x: correctedX,
         y: correctedY,
-        hitX,
-        hitY
-    };
-}
+  

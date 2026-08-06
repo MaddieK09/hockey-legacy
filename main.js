@@ -3,7 +3,7 @@
 
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.1.11
+   VERSION 0.1.12
 
    CONTROLS
    - Left joystick: skate
@@ -768,6 +768,9 @@ function create() {
             strength: 0,
             distance: 0,
 
+            pullStartX: 0,
+            pullStartY: 0,
+
             baseRadius: 34,
             knobRadius: 16,
             maximumDistance: 55,
@@ -924,7 +927,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.1.11",
+            "Version 0.1.12",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -1629,7 +1632,7 @@ function createScoreboard(scene) {
                     "Arial, sans-serif",
 
                 fontSize:
-                    "9px",
+                    "7px",
 
                 fontStyle:
                     "bold",
@@ -3237,7 +3240,7 @@ function createSkaterBody(
                 options.depth ??
                 20
             )
-            .setScale(0.84);
+            .setScale(0.68);
 
     body.skaterStyle =
         style;
@@ -3318,7 +3321,7 @@ function updateSkaterAnimation(
 
         const baseScale =
             sprinting && moving
-                ? 1.03
+                ? 1.015
                 : 1;
 
         body.setScale(
@@ -3375,8 +3378,8 @@ function updateSkaterAnimation(
     const speedScale =
         sprinting &&
         speed > 8
-            ? 0.90
-            : 0.84;
+            ? 0.73
+            : 0.68;
 
     body.setScale(
         speedScale
@@ -3499,8 +3502,8 @@ function createPlayer(scene) {
             )
                 .setOrigin(0.5)
                 .setDisplaySize(
-                    52,
-                    59
+                    43,
+                    49
                 );
 
         state.playerNameText =
@@ -10139,7 +10142,7 @@ function createAimJoystick(
         scene.add.text(
             x,
             y,
-            "PULL",
+            "PULL DOWN",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -10197,16 +10200,37 @@ function createAimJoystick(
             aim.pointerId =
                 pointer.id;
 
+            /*
+             * The pull begins wherever the thumb first touches. This prevents
+             * tapping the lower half of the fixed circle from counting as an
+             * already-charged shot.
+             */
+            aim.pullStartX =
+                pointer.x;
+
+            aim.pullStartY =
+                pointer.y;
+
+            aim.directionX = 0;
+            aim.directionY = -1;
+            aim.distance = 0;
+            aim.strength = 0;
+
+            aim.knob.setPosition(
+                aim.centerX,
+                aim.centerY
+            );
+
+            aim.label.setPosition(
+                aim.centerX,
+                aim.centerY
+            );
+
             aim.base
                 .setFillStyle(
                     0xb62b2b,
                     0.9
                 );
-
-            updateAimFromPointer(
-                scene,
-                pointer
-            );
         }
     );
 }
@@ -10869,11 +10893,11 @@ function updateAimFromPointer(
 
     const deltaX =
         pointer.x -
-        aim.centerX;
+        aim.pullStartX;
 
     const deltaY =
         pointer.y -
-        aim.centerY;
+        aim.pullStartY;
 
     const distance =
         Math.sqrt(
@@ -10915,10 +10939,9 @@ function updateAimFromPointer(
      * offensive goal.
      */
     const pullDistance =
-        Math.max(
-            0,
-            deltaY
-        );
+        deltaY > 0
+            ? deltaY
+            : 0;
 
     if (
         pullDistance < 4
@@ -11080,6 +11103,9 @@ function resetAimJoystick(
 
     aim.distance = 0;
     aim.strength = 0;
+
+    aim.pullStartX = 0;
+    aim.pullStartY = 0;
 
     if (
         aim.knob

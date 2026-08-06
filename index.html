@@ -25,14 +25,100 @@
 
     <title>Hockey Legacy</title>
 
-    <link rel="stylesheet" href="style.css?v=49">
-
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.min.js"></script>
+    <link
+        rel="stylesheet"
+        href="./style.css?v=76"
+    >
 </head>
 
 <body>
     <div id="game"></div>
 
-    <script src="main.js?v=75"></script>
+    <div
+        id="loading-status"
+        style="
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            z-index: 99999;
+            padding: 8px 10px;
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            font: bold 13px Arial, sans-serif;
+        "
+    >
+        Loading Phaser...
+    </div>
+
+    <script
+        src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"
+        onload="
+            document.getElementById('loading-status').textContent =
+                'Phaser loaded — loading game...';
+        "
+        onerror="
+            document.getElementById('loading-status').textContent =
+                'ERROR: Phaser failed to load';
+        "
+    ></script>
+
+    <script>
+        window.addEventListener(
+            "error",
+            function (event) {
+                const status =
+                    document.getElementById(
+                        "loading-status"
+                    );
+
+                if (!status) {
+                    return;
+                }
+
+                status.style.background =
+                    "#8f1515";
+
+                status.textContent =
+                    "ERROR: " +
+                    (
+                        event.message ||
+                        "Unknown JavaScript error"
+                    );
+            }
+        );
+    </script>
+
+    <script
+        src="./main.js?v=76"
+        onload="
+            setTimeout(
+                function () {
+                    const status =
+                        document.getElementById(
+                            'loading-status'
+                        );
+
+                    if (
+                        status &&
+                        document.querySelector('canvas')
+                    ) {
+                        status.remove();
+                    } else if (status) {
+                        status.textContent =
+                            'main.js loaded, but the game did not start';
+                    }
+                },
+                800
+            );
+        "
+        onerror="
+            document.getElementById('loading-status').style.background =
+                '#8f1515';
+
+            document.getElementById('loading-status').textContent =
+                'ERROR: main.js failed to load';
+        "
+    ></script>
 </body>
 </html>

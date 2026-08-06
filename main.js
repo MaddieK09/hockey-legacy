@@ -3,7 +3,7 @@
 
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.0.97
+   VERSION 0.0.98
 
    CONTROLS
    - Left joystick: skate
@@ -585,7 +585,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.0.97",
+            "Version 0.0.98",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -764,6 +764,13 @@ function createMainMenu(scene) {
         try {
             state.gameStarted = true;
 
+            if (
+                state.menuErrorText
+            ) {
+                state.menuErrorText.destroy();
+                state.menuErrorText = null;
+            }
+
             titleText.setVisible(false);
             versionText.setVisible(false);
 
@@ -861,6 +868,57 @@ function createMainMenu(scene) {
 
             titleText.setVisible(true);
             versionText.setVisible(true);
+
+            if (
+                state.menuErrorText
+            ) {
+                state.menuErrorText.destroy();
+            }
+
+            state.menuErrorText =
+                scene.add.text(
+                    rink.centerX,
+                    buttonY + 58,
+                    "START ERROR: " +
+                    (
+                        error &&
+                        error.message
+                            ? error.message
+                            : String(error)
+                    ),
+                    {
+                        fontFamily:
+                            "Arial, sans-serif",
+
+                        fontSize:
+                            "13px",
+
+                        fontStyle:
+                            "bold",
+
+                        color:
+                            "#ffffff",
+
+                        backgroundColor:
+                            "#8f1515",
+
+                        align:
+                            "center",
+
+                        wordWrap: {
+                            width: 290
+                        },
+
+                        padding: {
+                            left: 8,
+                            right: 8,
+                            top: 6,
+                            bottom: 6
+                        }
+                    }
+                )
+                    .setOrigin(0.5)
+                    .setDepth(500);
 
             const status =
                 document.getElementById(
@@ -2867,24 +2925,6 @@ function updateTeammateVisuals(
         teammate.facingY
     );
 
-    updateSkaterAnimation(
-        teammate.body,
-        teammate.velocityX,
-        teammate.velocityY,
-        (
-            teammate.body.scene &&
-            teammate.body.scene.gameState
-                ? teammate.body.scene.gameState.animationClock
-                : 0
-        ) +
-        (
-            teammate.side === "left"
-                ? 0
-                : 0.35
-        ),
-        false
-    );
-
     updateTeammateStick(
         teammate
     );
@@ -2945,6 +2985,19 @@ function updateTeammateAI(
 
         updateTeammateVisuals(
             teammate
+        );
+
+        updateSkaterAnimation(
+            teammate.body,
+            teammate.velocityX,
+            teammate.velocityY,
+            state.animationClock +
+            (
+                teammate.side === "left"
+                    ? 0
+                    : 0.35
+            ),
+            false
         );
     }
 }
@@ -3930,6 +3983,19 @@ function updateOpponentAI(
 
         updateTeammateVisuals(
             opponent
+        );
+
+        updateSkaterAnimation(
+            opponent.body,
+            opponent.velocityX,
+            opponent.velocityY,
+            state.animationClock +
+            (
+                opponent.side === "left"
+                    ? 0.18
+                    : 0.53
+            ),
+            false
         );
     }
 }

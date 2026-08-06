@@ -3,7 +3,7 @@
 
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.0.81
+   VERSION 0.0.90
 
    CONTROLS
    - Left joystick: skate
@@ -186,8 +186,15 @@ function create() {
         playerIndicator: null,
 
         teammates: [],
+        opponents: [],
 
         puck: null,
+
+        puckBattle: {
+            cooldown: 0,
+            looseTimer: 0,
+            lastContact: null
+        },
 
         goalie: {
             body: null,
@@ -266,6 +273,7 @@ function create() {
             assists: 0,
             points: 0,
             passes: 0,
+            hits: 0,
             savesAgainst: 0,
 
             panel: null,
@@ -517,7 +525,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.0.81",
+            "Version 0.0.90",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -763,6 +771,10 @@ function createMainMenu(scene) {
             scene
         );
 
+        createOpponents(
+            scene
+        );
+
         createPuck(
             scene
         );
@@ -900,6 +912,16 @@ function update(
     );
 
     updateTeammateAI(
+        this,
+        deltaSeconds
+    );
+
+    updateOpponentAI(
+        this,
+        deltaSeconds
+    );
+
+    updatePuckBattles(
         this,
         deltaSeconds
     );
@@ -1178,7 +1200,7 @@ function updatePlayerStatsDisplay(
 
     stats.text.setText(
         `G ${stats.goals}   A ${stats.assists}   P ${stats.points}\n` +
-        `S ${stats.shots}   PAS ${stats.passes}`
+        `S ${stats.shots}   PAS ${stats.passes}   H ${stats.hits || 0}`
     );
 }
 
@@ -2133,6 +2155,9 @@ function createTeammate(
 
         possessionTime: 0,
 
+        giveAndGoTarget: null,
+        giveAndGoTimer: 0,
+
         laneOffsetX:
             side === "left"
                 ? -78
@@ -2188,6 +2213,20 @@ function updateTeammateAI(
         const teammate
         of state.teammates
     ) {
+        teammate.giveAndGoTimer =
+            Math.max(
+                0,
+                teammate.giveAndGoTimer -
+                    deltaSeconds
+            );
+
+        if (
+            teammate.giveAndGoTimer <= 0
+        ) {
+            teammate.giveAndGoTarget =
+                null;
+        }
+
         chooseTeammateTarget(
             state,
             teammate
@@ -2971,6 +3010,1069 @@ function updateTeammateFacing(
 
     teammate.facingY =
         Math.sin(newAngle);
+}
+
+
+/* =========================================================
+   OPPONENTS, POSITIONAL DEFENCE AND PUCK BATTLES
+========================================================= */
+
+function createOpponents(scene) {
+    const state =
+        scene.gameState;
+
+    const rink =
+        state.rink;
+
+    createOpponent(
+        scene,
+        rink.centerX - 58,
+        rink.centerY - 82,
+        "LD",
+        "left"
+    );
+
+    createOpponent(
+        scene,
+        rink.centerX + 58,
+        rink.centerY - 82,
+        "RD",
+        "right"
+    );
+}
+
+function createOpponent(
+    scene,
+    x,
+    y,
+    name,
+    side
+) {
+    const state =
+        scene.gameState;
+
+    const body =
+        scene.add.circle(
+            x,
+            y,
+            state.teammateRadius,
+            0xc23b3b
+        )
+            .setStrokeStyle(
+                3,
+                0xffffff,
+                1
+            )
+            .setDepth(20);
+
+    const stick =
+        scene.add.graphics()
+            .setDepth(21);
+
+    const label =
+        scene.add.text(
+            x,
+            y - 18,
+            name,
+            {
+                fontFamily:
+                    "Arial, sans-serif",
+
+                fontSize:
+                    "10px",
+
+                fontStyle:
+                    "bold",
+
+                color:
+                    "#5d1010",
+
+                backgroundColor:
+                    "#ffffff",
+
+                padding: {
+                    left: 2,
+                    right: 2
+                }
+            }
+        )
+            .setOrigin(0.5)
+            .setDepth(22);
+
+    const targetRing =
+        scene.add.graphics()
+            .setDepth(18);
+
+    const opponent = {
+        body,
+        stick,
+        label,
+        targetRing,
+
+        name,
+        side,
+        isOpponent: true,
+
+        facingX: 0,
+        facingY: 1,
+
+        velocityX: 0,
+        velocityY: 0,
+
+        maximumSpeed:
+            Phaser.Math.Between(
+                106,
+                120
+            ),
+
+        acceleration:
+            Phaser.Math.Between(
+                300,
+                365
+            ),
+
+        deceleration: 440,
+        turnSpeed: 5.2,
+
+        targetX: x,
+        targetY: y,
+
+        decisionTimer:
+            Phaser.Math.FloatBetween(
+                0.5,
+                0.95
+            ),
+
+        possessionTime: 0,
+        checkCooldown: 0,
+
+        laneOffsetX:
+            side === "left"
+                ? -58
+                : 58,
+
+        cycleDirection:
+            side === "left"
+                ? -1
+                : 1
+    };
+
+    state.opponents.push(
+        opponent
+    );
+
+    updateTeammateStick(
+        opponent
+    );
+}
+
+function updateOpponentAI(
+    scene,
+    deltaSeconds
+) {
+    const state =
+        scene.gameState;
+
+    if (
+        state.playStopped ||
+        state.goalPresentation.active
+    ) {
+        return;
+    }
+
+    for (
+        const opponent
+        of state.opponents
+    ) {
+        opponent.checkCooldown =
+            Math.max(
+                0,
+                opponent.checkCooldown -
+                    deltaSeconds
+            );
+
+        chooseOpponentTarget(
+            state,
+            opponent
+        );
+
+        moveTeammateTowardTarget(
+            state,
+            opponent,
+            deltaSeconds
+        );
+
+        updateOpponentFacing(
+            state,
+            opponent,
+            deltaSeconds
+        );
+
+        updateTeammateVisuals(
+            opponent
+        );
+    }
+}
+
+function chooseOpponentTarget(
+    state,
+    opponent
+) {
+    const rink =
+        state.rink;
+
+    const owner =
+        state.possession.owner;
+
+    if (
+        owner === opponent
+    ) {
+        opponent.targetX =
+            rink.centerX +
+            opponent.laneOffsetX *
+                0.55;
+
+        opponent.targetY =
+            rink.bottom - 118;
+
+        return;
+    }
+
+    if (
+        owner &&
+        owner.isOpponent
+    ) {
+        const carrier =
+            owner;
+
+        if (
+            carrier === opponent
+        ) {
+            return;
+        }
+
+        opponent.targetX =
+            rink.centerX +
+            opponent.laneOffsetX;
+
+        opponent.targetY =
+            Phaser.Math.Clamp(
+                carrier.body.y + 82,
+                rink.centerY + 18,
+                rink.bottom - 115
+            );
+
+        return;
+    }
+
+    const puckCarrierX =
+        owner === state.player
+            ? state.player.x
+            : owner
+                ? owner.body.x
+                : state.puck.x;
+
+    const puckCarrierY =
+        owner === state.player
+            ? state.player.y
+            : owner
+                ? owner.body.y
+                : state.puck.y;
+
+    const puckOnLeft =
+        puckCarrierX <
+        rink.centerX;
+
+    const opponentOnPuckSide =
+        (
+            puckOnLeft &&
+            opponent.side === "left"
+        ) ||
+        (
+            !puckOnLeft &&
+            opponent.side === "right"
+        );
+
+    const pressurePlayer =
+        chooseOpponentPressurePlayer(
+            state
+        );
+
+    if (
+        pressurePlayer === opponent
+    ) {
+        opponent.targetX =
+            puckCarrierX;
+
+        opponent.targetY =
+            puckCarrierY + 7;
+
+        return;
+    }
+
+    /*
+     * The non-pressure defender protects the slot and passing lane.
+     */
+    opponent.targetX =
+        rink.centerX +
+        (
+            opponent.side === "left"
+                ? -34
+                : 34
+        );
+
+    opponent.targetY =
+        Phaser.Math.Clamp(
+            puckCarrierY - 52,
+            rink.top + 104,
+            rink.centerY - 42
+        );
+
+    if (
+        opponentOnPuckSide
+    ) {
+        opponent.targetX =
+            Phaser.Math.Linear(
+                opponent.targetX,
+                puckCarrierX,
+                0.32
+            );
+    }
+}
+
+function chooseOpponentPressurePlayer(
+    state
+) {
+    if (
+        state.opponents.length === 0
+    ) {
+        return null;
+    }
+
+    const owner =
+        state.possession.owner;
+
+    const targetX =
+        owner === state.player
+            ? state.player.x
+            : owner && !owner.isOpponent
+                ? owner.body.x
+                : state.puck.x;
+
+    const targetY =
+        owner === state.player
+            ? state.player.y
+            : owner && !owner.isOpponent
+                ? owner.body.y
+                : state.puck.y;
+
+    let closest = null;
+    let closestDistance =
+        Infinity;
+
+    for (
+        const opponent
+        of state.opponents
+    ) {
+        const distance =
+            Phaser.Math.Distance.Between(
+                opponent.body.x,
+                opponent.body.y,
+                targetX,
+                targetY
+            );
+
+        if (
+            distance <
+            closestDistance
+        ) {
+            closestDistance =
+                distance;
+
+            closest =
+                opponent;
+        }
+    }
+
+    return closest;
+}
+
+function updateOpponentFacing(
+    state,
+    opponent,
+    deltaSeconds
+) {
+    let desiredX;
+    let desiredY;
+
+    if (
+        state.possession.owner ===
+        opponent
+    ) {
+        desiredX =
+            state.rink.centerX -
+            opponent.body.x;
+
+        desiredY =
+            state.rink.bottom -
+            opponent.body.y;
+    } else {
+        const owner =
+            state.possession.owner;
+
+        const targetX =
+            owner === state.player
+                ? state.player.x
+                : owner
+                    ? owner.body.x
+                    : state.puck.x;
+
+        const targetY =
+            owner === state.player
+                ? state.player.y
+                : owner
+                    ? owner.body.y
+                    : state.puck.y;
+
+        desiredX =
+            targetX -
+            opponent.body.x;
+
+        desiredY =
+            targetY -
+            opponent.body.y;
+    }
+
+    const length =
+        Math.sqrt(
+            desiredX * desiredX +
+            desiredY * desiredY
+        );
+
+    if (
+        length < 0.001
+    ) {
+        return;
+    }
+
+    desiredX /= length;
+    desiredY /= length;
+
+    const currentAngle =
+        Math.atan2(
+            opponent.facingY,
+            opponent.facingX
+        );
+
+    const targetAngle =
+        Math.atan2(
+            desiredY,
+            desiredX
+        );
+
+    const difference =
+        Phaser.Math.Angle.Wrap(
+            targetAngle -
+            currentAngle
+        );
+
+    const maximumTurn =
+        opponent.turnSpeed *
+        deltaSeconds;
+
+    const newAngle =
+        currentAngle +
+        Phaser.Math.Clamp(
+            difference,
+            -maximumTurn,
+            maximumTurn
+        );
+
+    opponent.facingX =
+        Math.cos(
+            newAngle
+        );
+
+    opponent.facingY =
+        Math.sin(
+            newAngle
+        );
+}
+
+function updateOpponentPuckDecision(
+    scene,
+    opponent,
+    deltaSeconds
+) {
+    const state =
+        scene.gameState;
+
+    opponent.possessionTime +=
+        deltaSeconds;
+
+    opponent.decisionTimer -=
+        deltaSeconds;
+
+    if (
+        opponent.decisionTimer > 0
+    ) {
+        return;
+    }
+
+    opponent.decisionTimer =
+        Phaser.Math.FloatBetween(
+            0.48,
+            0.9
+        );
+
+    const distanceToBottomGoal =
+        Phaser.Math.Distance.Between(
+            opponent.body.x,
+            opponent.body.y,
+            state.rink.centerX,
+            state.rink.bottom - 44
+        );
+
+    if (
+        distanceToBottomGoal < 145 &&
+        Math.random() < 0.5
+    ) {
+        shootFromOpponent(
+            scene,
+            opponent
+        );
+
+        return;
+    }
+
+    const other =
+        state.opponents.find(
+            candidate =>
+                candidate !== opponent
+        );
+
+    if (
+        other &&
+        Math.random() < 0.46
+    ) {
+        passFromOpponent(
+            scene,
+            opponent,
+            other
+        );
+    }
+}
+
+function shootFromOpponent(
+    scene,
+    opponent
+) {
+    const state =
+        scene.gameState;
+
+    if (
+        state.possession.owner !==
+        opponent
+    ) {
+        return;
+    }
+
+    const start =
+        getTeammateStickGeometry(
+            opponent
+        );
+
+    const targetX =
+        state.rink.centerX +
+        Phaser.Math.Between(
+            -11,
+            11
+        );
+
+    const targetY =
+        state.rink.bottom + 10;
+
+    let directionX =
+        targetX -
+        start.puckAnchorX;
+
+    let directionY =
+        targetY -
+        start.puckAnchorY;
+
+    const distance =
+        Math.sqrt(
+            directionX * directionX +
+            directionY * directionY
+        );
+
+    if (
+        distance < 0.001
+    ) {
+        return;
+    }
+
+    directionX /= distance;
+    directionY /= distance;
+
+    releasePossession(
+        state,
+        0.24
+    );
+
+    state.possession.passTarget = null;
+    state.possession.passTargetType = null;
+
+    state.puck.setPosition(
+        start.puckAnchorX,
+        start.puckAnchorY
+    );
+
+    const speed =
+        Phaser.Math.Between(
+            320,
+            430
+        );
+
+    state.puckVelocityX =
+        directionX * speed;
+
+    state.puckVelocityY =
+        directionY * speed;
+}
+
+function passFromOpponent(
+    scene,
+    opponent,
+    targetOpponent
+) {
+    const state =
+        scene.gameState;
+
+    if (
+        state.possession.owner !==
+        opponent
+    ) {
+        return;
+    }
+
+    const start =
+        getTeammateStickGeometry(
+            opponent
+        );
+
+    const target =
+        getTeammateStickGeometry(
+            targetOpponent
+        );
+
+    let directionX =
+        target.puckAnchorX -
+        start.puckAnchorX +
+        targetOpponent.velocityX *
+            0.1;
+
+    let directionY =
+        target.puckAnchorY -
+        start.puckAnchorY +
+        targetOpponent.velocityY *
+            0.1;
+
+    const distance =
+        Math.sqrt(
+            directionX * directionX +
+            directionY * directionY
+        );
+
+    if (
+        distance < 0.001
+    ) {
+        return;
+    }
+
+    directionX /= distance;
+    directionY /= distance;
+
+    releasePossession(
+        state,
+        0.16
+    );
+
+    state.possession.passTarget =
+        targetOpponent;
+
+    state.possession.passTargetType =
+        "teammate";
+
+    state.puck.setPosition(
+        start.puckAnchorX,
+        start.puckAnchorY
+    );
+
+    const speed =
+        Phaser.Math.Clamp(
+            225 +
+            distance * 0.58,
+            245,
+            365
+        );
+
+    state.puckVelocityX =
+        directionX * speed;
+
+    state.puckVelocityY =
+        directionY * speed;
+}
+
+function updatePuckBattles(
+    scene,
+    deltaSeconds
+) {
+    const state =
+        scene.gameState;
+
+    const battle =
+        state.puckBattle;
+
+    battle.cooldown =
+        Math.max(
+            0,
+            battle.cooldown -
+                deltaSeconds
+        );
+
+    battle.looseTimer =
+        Math.max(
+            0,
+            battle.looseTimer -
+                deltaSeconds
+        );
+
+    resolveSkaterBodyContact(
+        state
+    );
+
+    const owner =
+        state.possession.owner;
+
+    if (
+        !owner ||
+        battle.cooldown > 0
+    ) {
+        return;
+    }
+
+    const ownerIsOpponent =
+        owner.isOpponent === true;
+
+    const challengers =
+        ownerIsOpponent
+            ? [
+                {
+                    body: state.player,
+                    isPlayer: true,
+                    velocityX:
+                        state.playerVelocityX,
+                    velocityY:
+                        state.playerVelocityY
+                },
+                ...state.teammates
+            ]
+            : state.opponents;
+
+    const ownerBody =
+        owner === state.player
+            ? state.player
+            : owner.body;
+
+    for (
+        const challenger
+        of challengers
+    ) {
+        const challengerBody =
+            challenger.isPlayer
+                ? challenger.body
+                : challenger.body;
+
+        const distance =
+            Phaser.Math.Distance.Between(
+                ownerBody.x,
+                ownerBody.y,
+                challengerBody.x,
+                challengerBody.y
+            );
+
+        if (
+            distance > 24
+        ) {
+            continue;
+        }
+
+        const ownerSpeed =
+            owner === state.player
+                ? Math.sqrt(
+                    state.playerVelocityX *
+                        state.playerVelocityX +
+                    state.playerVelocityY *
+                        state.playerVelocityY
+                )
+                : Math.sqrt(
+                    owner.velocityX *
+                        owner.velocityX +
+                    owner.velocityY *
+                        owner.velocityY
+                );
+
+        const challengerSpeed =
+            challenger.isPlayer
+                ? Math.sqrt(
+                    state.playerVelocityX *
+                        state.playerVelocityX +
+                    state.playerVelocityY *
+                        state.playerVelocityY
+                )
+                : Math.sqrt(
+                    challenger.velocityX *
+                        challenger.velocityX +
+                    challenger.velocityY *
+                        challenger.velocityY
+                );
+
+        let knockChance =
+            0.18 +
+            Phaser.Math.Clamp(
+                (
+                    challengerSpeed -
+                    ownerSpeed
+                ) / 250,
+                -0.08,
+                0.18
+            );
+
+        if (
+            distance < 18
+        ) {
+            knockChance += 0.12;
+        }
+
+        if (
+            Math.random() <
+            Phaser.Math.Clamp(
+                knockChance,
+                0.1,
+                0.48
+            )
+        ) {
+            knockPuckLoose(
+                scene,
+                ownerBody,
+                challengerBody
+            );
+
+            battle.cooldown = 0.7;
+            battle.looseTimer = 0.35;
+            battle.lastContact =
+                challenger;
+
+            if (
+                challenger.isPlayer
+            ) {
+                state.playerStats.hits =
+                    (
+                        state.playerStats.hits ||
+                        0
+                    ) + 1;
+
+                updatePlayerStatsDisplay(
+                    scene
+                );
+            }
+
+            return;
+        }
+
+        battle.cooldown = 0.22;
+    }
+}
+
+function knockPuckLoose(
+    scene,
+    ownerBody,
+    challengerBody
+) {
+    const state =
+        scene.gameState;
+
+    let directionX =
+        ownerBody.x -
+        challengerBody.x;
+
+    let directionY =
+        ownerBody.y -
+        challengerBody.y;
+
+    const length =
+        Math.sqrt(
+            directionX * directionX +
+            directionY * directionY
+        ) || 1;
+
+    directionX /= length;
+    directionY /= length;
+
+    releasePossession(
+        state,
+        0.34
+    );
+
+    state.possession.passTarget = null;
+    state.possession.passTargetType = null;
+
+    state.puck.setPosition(
+        ownerBody.x +
+        directionX * 18,
+        ownerBody.y +
+        directionY * 18
+    );
+
+    const angleJitter =
+        Phaser.Math.FloatBetween(
+            -0.45,
+            0.45
+        );
+
+    const cos =
+        Math.cos(
+            angleJitter
+        );
+
+    const sin =
+        Math.sin(
+            angleJitter
+        );
+
+    const looseX =
+        directionX * cos -
+        directionY * sin;
+
+    const looseY =
+        directionX * sin +
+        directionY * cos;
+
+    const speed =
+        Phaser.Math.Between(
+            115,
+            185
+        );
+
+    state.puckVelocityX =
+        looseX * speed;
+
+    state.puckVelocityY =
+        looseY * speed;
+}
+
+function resolveSkaterBodyContact(
+    state
+) {
+    const friendlySkaters = [
+        {
+            body: state.player,
+            isPlayer: true
+        },
+        ...state.teammates
+    ];
+
+    for (
+        const friendly
+        of friendlySkaters
+    ) {
+        for (
+            const opponent
+            of state.opponents
+        ) {
+            const firstBody =
+                friendly.body;
+
+            const secondBody =
+                opponent.body;
+
+            const deltaX =
+                firstBody.x -
+                secondBody.x;
+
+            const deltaY =
+                firstBody.y -
+                secondBody.y;
+
+            const distance =
+                Math.sqrt(
+                    deltaX * deltaX +
+                    deltaY * deltaY
+                );
+
+            const minimumDistance =
+                state.playerRadius +
+                state.teammateRadius +
+                1;
+
+            if (
+                distance >= minimumDistance ||
+                distance < 0.001
+            ) {
+                continue;
+            }
+
+            const normalX =
+                deltaX / distance;
+
+            const normalY =
+                deltaY / distance;
+
+            const overlap =
+                minimumDistance -
+                distance;
+
+            firstBody.x +=
+                normalX *
+                overlap *
+                0.5;
+
+            firstBody.y +=
+                normalY *
+                overlap *
+                0.5;
+
+            secondBody.x -=
+                normalX *
+                overlap *
+                0.5;
+
+            secondBody.y -=
+                normalY *
+                overlap *
+                0.5;
+
+            opponent.velocityX *= 0.82;
+            opponent.velocityY *= 0.82;
+
+            if (
+                friendly.isPlayer
+            ) {
+                state.playerVelocityX *=
+                    0.82;
+
+                state.playerVelocityY *=
+                    0.82;
+            } else {
+                friendly.velocityX *=
+                    0.82;
+
+                friendly.velocityY *=
+                    0.82;
+            }
+        }
+    }
 }
 
 /* =========================================================
@@ -3847,11 +4949,21 @@ function updatePossession(
         possession.owner !==
         state.player
     ) {
-        updateAIPuckDecision(
-            scene,
-            possession.owner,
-            deltaSeconds
-        );
+        if (
+            possession.owner.isOpponent
+        ) {
+            updateOpponentPuckDecision(
+                scene,
+                possession.owner,
+                deltaSeconds
+            );
+        } else {
+            updateAIPuckDecision(
+                scene,
+                possession.owner,
+                deltaSeconds
+            );
+        }
     }
 }
 
@@ -4092,6 +5204,35 @@ function checkForPuckPickup(scene) {
 
             target:
                 teammate,
+
+            distance:
+                distanceFromPointToSegment(
+                    state.puck.x,
+                    state.puck.y,
+
+                    geometry.bladeStartX,
+                    geometry.bladeStartY,
+
+                    geometry.bladeEndX,
+                    geometry.bladeEndY
+                )
+        });
+    }
+
+    for (
+        const opponent
+        of state.opponents
+    ) {
+        const geometry =
+            getTeammateStickGeometry(
+                opponent
+            );
+
+        candidates.push({
+            type: "opponent",
+
+            target:
+                opponent,
 
             distance:
                 distanceFromPointToSegment(
@@ -4496,6 +5637,12 @@ function passPuckToTeammate(
 
     state.puckVelocityY =
         directionY * passSpeed;
+
+    teammate.giveAndGoTarget =
+        state.player;
+
+    teammate.giveAndGoTimer =
+        1.35;
 
     flashActionButton(
         scene,
@@ -5163,6 +6310,14 @@ function chooseAIPassTarget(
                 "player"
         ) {
             score += 2.25;
+        }
+
+        if (
+            teammate.giveAndGoTimer > 0 &&
+            candidate.type ===
+                "player"
+        ) {
+            score += 2.8;
         }
 
         if (
@@ -7696,6 +8851,18 @@ function freezeGameplayDuringGoal(scene) {
             teammate
         );
     }
+
+    for (
+        const opponent
+        of state.opponents
+    ) {
+        opponent.velocityX = 0;
+        opponent.velocityY = 0;
+
+        updateTeammateVisuals(
+            opponent
+        );
+    }
 }
 
 /* =========================================================
@@ -7800,6 +8967,9 @@ function resetPlayersForCenterFaceoff(
 
         teammate.possessionTime = 0;
 
+        teammate.giveAndGoTarget = null;
+        teammate.giveAndGoTimer = 0;
+
         teammate.decisionTimer =
             Phaser.Math.FloatBetween(
                 0.8,
@@ -7810,6 +8980,73 @@ function resetPlayersForCenterFaceoff(
             teammate
         );
     }
+
+    const opponentPositions = [
+        {
+            x:
+                rink.centerX - 58,
+
+            y:
+                rink.centerY - 82
+        },
+
+        {
+            x:
+                rink.centerX + 58,
+
+            y:
+                rink.centerY - 82
+        }
+    ];
+
+    for (
+        let index = 0;
+        index <
+        state.opponents.length;
+        index += 1
+    ) {
+        const opponent =
+            state.opponents[index];
+
+        const position =
+            opponentPositions[index] ||
+            opponentPositions[0];
+
+        opponent.body.setPosition(
+            position.x,
+            position.y
+        );
+
+        opponent.velocityX = 0;
+        opponent.velocityY = 0;
+
+        opponent.facingX = 0;
+        opponent.facingY = 1;
+
+        opponent.targetX =
+            position.x;
+
+        opponent.targetY =
+            position.y;
+
+        opponent.possessionTime = 0;
+
+        opponent.decisionTimer =
+            Phaser.Math.FloatBetween(
+                0.65,
+                1.1
+            );
+
+        opponent.checkCooldown = 0;
+
+        updateTeammateVisuals(
+            opponent
+        );
+    }
+
+    state.puckBattle.cooldown = 0;
+    state.puckBattle.looseTimer = 0;
+    state.puckBattle.lastContact = null;
 
     state.puckVelocityX = 0;
     state.puckVelocityY = 0;

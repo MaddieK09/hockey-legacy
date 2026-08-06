@@ -3,7 +3,7 @@
 
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.0.93
+   VERSION 0.0.94
 
    CONTROLS
    - Left joystick: skate
@@ -302,6 +302,7 @@ function create() {
         turnSpeed: 7.5,
 
         sprinting: false,
+        keyboardSprintWasDown: false,
 
         keyboard: null,
 
@@ -575,7 +576,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.0.93",
+            "Version 0.0.94",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -2061,240 +2062,245 @@ function createSkaterBody(
         options.pantsColor ??
         0x1b2430;
 
-    const number =
-        options.number ??
-        "";
-
     const body =
-        scene.add.container(
-            x,
-            y
-        )
+        scene.add.graphics()
+            .setPosition(
+                x,
+                y
+            )
             .setDepth(
                 options.depth ??
                 20
             );
 
     /*
-     * Top-down hockey player silhouette:
-     * helmet/head at the front, shoulders and jersey,
-     * gloves, pants, and two skates behind.
+     * Draw a clearly recognizable top-down hockey player.
+     * This uses one Graphics object rather than nested shapes,
+     * which is more reliable on iPhone Safari.
      */
-    const leftSkate =
-        scene.add.rectangle(
-            -5,
-            10,
-            4,
-            10,
-            0x141414,
-            1
-        )
-            .setAngle(-10);
+    body.fillStyle(
+        0x111111,
+        1
+    );
 
-    const rightSkate =
-        scene.add.rectangle(
-            5,
-            10,
-            4,
-            10,
-            0x141414,
-            1
-        )
-            .setAngle(10);
+    body.fillRoundedRect(
+        -9,
+        12,
+        7,
+        12,
+        2
+    );
 
-    const pants =
-        scene.add.rectangle(
-            0,
-            5,
-            14,
-            9,
-            pantsColor,
-            1
-        )
-            .setStrokeStyle(
-                1,
-                0xffffff,
-                0.45
-            );
+    body.fillRoundedRect(
+        2,
+        12,
+        7,
+        12,
+        2
+    );
 
-    const torso =
-        scene.add.rectangle(
-            0,
-            -2,
-            18,
-            17,
-            jerseyColor,
-            1
-        )
-            .setStrokeStyle(
-                2,
-                secondaryColor,
-                1
-            );
+    body.fillStyle(
+        pantsColor,
+        1
+    );
 
-    const shoulderStripe =
-        scene.add.rectangle(
-            0,
-            -5,
-            18,
-            4,
-            secondaryColor,
-            0.95
+    body.fillRoundedRect(
+        -10,
+        5,
+        20,
+        12,
+        3
+    );
+
+    body.lineStyle(
+        2,
+        secondaryColor,
+        1
+    );
+
+    body.fillStyle(
+        jerseyColor,
+        1
+    );
+
+    body.fillRoundedRect(
+        -13,
+        -9,
+        26,
+        20,
+        5
+    );
+
+    body.strokeRoundedRect(
+        -13,
+        -9,
+        26,
+        20,
+        5
+    );
+
+    body.fillStyle(
+        secondaryColor,
+        1
+    );
+
+    body.fillRect(
+        -13,
+        -5,
+        26,
+        4
+    );
+
+    body.fillStyle(
+        jerseyColor,
+        1
+    );
+
+    body.fillRoundedRect(
+        -20,
+        -6,
+        8,
+        17,
+        3
+    );
+
+    body.fillRoundedRect(
+        12,
+        -6,
+        8,
+        17,
+        3
+    );
+
+    body.lineStyle(
+        1,
+        secondaryColor,
+        1
+    );
+
+    body.strokeRoundedRect(
+        -20,
+        -6,
+        8,
+        17,
+        3
+    );
+
+    body.strokeRoundedRect(
+        12,
+        -6,
+        8,
+        17,
+        3
+    );
+
+    body.fillStyle(
+        helmetColor,
+        1
+    );
+
+    body.fillRoundedRect(
+        -22,
+        7,
+        7,
+        8,
+        2
+    );
+
+    body.fillRoundedRect(
+        15,
+        7,
+        7,
+        8,
+        2
+    );
+
+    body.fillStyle(
+        skinColor,
+        1
+    );
+
+    body.fillCircle(
+        0,
+        -17,
+        7
+    );
+
+    body.lineStyle(
+        1,
+        0x3d2a1f,
+        0.8
+    );
+
+    body.strokeCircle(
+        0,
+        -17,
+        7
+    );
+
+    body.fillStyle(
+        helmetColor,
+        1
+    );
+
+    body.fillRoundedRect(
+        -8,
+        -23,
+        16,
+        8,
+        3
+    );
+
+    body.lineStyle(
+        2,
+        secondaryColor,
+        1
+    );
+
+    body.strokeRoundedRect(
+        -8,
+        -23,
+        16,
+        8,
+        3
+    );
+
+    body.fillStyle(
+        0xbfe9ff,
+        0.9
+    );
+
+    body.fillRect(
+        -5,
+        -16,
+        10,
+        3
+    );
+
+    /*
+     * Small chest number block.
+     */
+    body.fillStyle(
+        0x0d1b2a,
+        0.72
+    );
+
+    body.fillRoundedRect(
+        -5,
+        1,
+        10,
+        7,
+        2
+    );
+
+    body.playerNumber =
+        String(
+            options.number ?? ""
         );
-
-    const leftArm =
-        scene.add.rectangle(
-            -11,
-            -1,
-            6,
-            13,
-            jerseyColor,
-            1
-        )
-            .setStrokeStyle(
-                1,
-                secondaryColor,
-                1
-            )
-            .setAngle(10);
-
-    const rightArm =
-        scene.add.rectangle(
-            11,
-            -1,
-            6,
-            13,
-            jerseyColor,
-            1
-        )
-            .setStrokeStyle(
-                1,
-                secondaryColor,
-                1
-            )
-            .setAngle(-10);
-
-    const leftGlove =
-        scene.add.rectangle(
-            -13,
-            4,
-            5,
-            6,
-            helmetColor,
-            1
-        );
-
-    const rightGlove =
-        scene.add.rectangle(
-            13,
-            4,
-            5,
-            6,
-            helmetColor,
-            1
-        );
-
-    const head =
-        scene.add.circle(
-            0,
-            -12,
-            5,
-            skinColor,
-            1
-        )
-            .setStrokeStyle(
-                1,
-                0x3d2a1f,
-                0.6
-            );
-
-    const helmet =
-        scene.add.rectangle(
-            0,
-            -14,
-            12,
-            6,
-            helmetColor,
-            1
-        )
-            .setStrokeStyle(
-                1,
-                secondaryColor,
-                0.9
-            );
-
-    const visor =
-        scene.add.rectangle(
-            0,
-            -11,
-            8,
-            2,
-            0xbfe9ff,
-            0.8
-        );
-
-    const numberText =
-        scene.add.text(
-            0,
-            -1,
-            String(number),
-            {
-                fontFamily:
-                    "Arial, sans-serif",
-
-                fontSize:
-                    "8px",
-
-                fontStyle:
-                    "bold",
-
-                color:
-                    "#ffffff",
-
-                stroke:
-                    "#000000",
-
-                strokeThickness:
-                    2
-            }
-        )
-            .setOrigin(0.5);
-
-    body.add([
-        leftSkate,
-        rightSkate,
-        pants,
-        torso,
-        shoulderStripe,
-        leftArm,
-        rightArm,
-        leftGlove,
-        rightGlove,
-        head,
-        helmet,
-        visor,
-        numberText
-    ]);
-
-    body.visualParts = {
-        leftSkate,
-        rightSkate,
-        pants,
-        torso,
-        shoulderStripe,
-        leftArm,
-        rightArm,
-        leftGlove,
-        rightGlove,
-        head,
-        helmet,
-        visor,
-        numberText
-    };
 
     body.setSize(
-        26,
-        30
+        44,
+        48
     );
 
     return body;
@@ -2402,7 +2408,7 @@ function updatePlayerIndicator(
 
     state.playerIndicator.setPosition(
         state.player.x,
-        state.player.y - 29
+        state.player.y - 34
     );
 }
 
@@ -2576,7 +2582,7 @@ function updateTeammateVisuals(
 ) {
     teammate.label.setPosition(
         teammate.body.x,
-        teammate.body.y - 25
+        teammate.body.y - 32
     );
 
     updateSkaterBodyRotation(
@@ -9818,8 +9824,21 @@ function updateKeyboardInput(scene) {
         state.movement.strength = 0;
     }
 
-    state.sprinting =
+    const keyboardSprintDown =
         keyboard.sprint.isDown;
+
+    if (
+        keyboardSprintDown
+    ) {
+        state.sprinting = true;
+    } else if (
+        state.keyboardSprintWasDown
+    ) {
+        state.sprinting = false;
+    }
+
+    state.keyboardSprintWasDown =
+        keyboardSprintDown;
 
     updateSprintButtonAppearance(
         scene
@@ -10174,6 +10193,7 @@ function registerGoal(
     );
 
     state.sprinting = false;
+    state.keyboardSprintWasDown = false;
 
     updateSprintButtonAppearance(
         scene
@@ -10799,6 +10819,7 @@ function resetPlayersForCenterFaceoff(
     );
 
     state.sprinting = false;
+    state.keyboardSprintWasDown = false;
 
     updateSprintButtonAppearance(
         scene

@@ -3,7 +3,7 @@
 
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.1.06
+   VERSION 0.1.07
 
    CONTROLS
    - Left joystick: skate
@@ -120,12 +120,14 @@ const PLAYER_BLUE_IDLE_KEY =
     "player-blue-idle";
 
 const PLAYER_BLUE_IDLE_PATH =
-    "./assets/sprites/4E800B5A-52F2-4C86-9793-A167B3FD4453.png?v=3";
+    "https://raw.githubusercontent.com/MaddieK09/hockey-legacy/main/assets/sprites/4E800B5A-52F2-4C86-9793-A167B3FD4453.png?v=4";
 
 const PLAYER_BLUE_TRIMMED_KEY =
     "player-blue-idle-trimmed";
 
 function preload() {
+    this.load.setCORS("anonymous");
+
     this.load.image(
         PLAYER_BLUE_IDLE_KEY,
         PLAYER_BLUE_IDLE_PATH
@@ -848,7 +850,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.1.06",
+            "Version 0.1.07",
             {
                 fontFamily:
                     "Arial, sans-serif",

@@ -3,7 +3,7 @@
 
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.0.91
+   VERSION 0.0.92
 
    CONTROLS
    - Left joystick: skate
@@ -193,7 +193,12 @@ function create() {
         puckBattle: {
             cooldown: 0,
             looseTimer: 0,
-            lastContact: null
+            lastContact: null,
+
+            pressureOwner: null,
+            pressureChallenger: null,
+            pressureTime: 0,
+            pressureNeeded: 0.34
         },
 
         goalie: {
@@ -241,21 +246,21 @@ function create() {
             label: null,
 
             x: rink.centerX,
-            y: rink.bottom - 63,
+            y: rink.bottom - 70,
 
             homeX: rink.centerX,
-            homeY: rink.bottom - 63,
+            homeY: rink.bottom - 70,
 
             velocityX: 0,
-            maximumSpeed: 76,
+            maximumSpeed: 84,
             acceleration: 335,
             deceleration: 470,
 
-            visualWidth: 19,
-            visualHeight: 18,
+            visualWidth: 24,
+            visualHeight: 21,
 
-            saveHalfWidth: 6.5,
-            saveHalfHeight: 8,
+            saveHalfWidth: 8.5,
+            saveHalfHeight: 9,
 
             reactionTimer: 0,
             reactionDelay: 0.18,
@@ -366,6 +371,16 @@ function create() {
 
             cooldown: 0,
             cooldownLength: 0.65,
+
+            flashTimer: null
+        },
+
+        defenseButton: {
+            button: null,
+            label: null,
+
+            cooldown: 0,
+            cooldownLength: 0.48,
 
             flashTimer: null
         },
@@ -560,7 +575,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.0.91",
+            "Version 0.0.92",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -887,6 +902,11 @@ function update(
         deltaSeconds
     );
 
+    updateDefenseButtonState(
+        this,
+        deltaSeconds
+    );
+
     updatePassCallState(
         this,
         deltaSeconds
@@ -917,6 +937,10 @@ function update(
         );
 
         updateContextualActionButton(
+            this
+        );
+
+        updateDefenseButtonAppearance(
             this
         );
 
@@ -1020,6 +1044,10 @@ function update(
     );
 
     updateContextualActionButton(
+        this
+    );
+
+    updateDefenseButtonAppearance(
         this
     );
 }
@@ -3626,15 +3654,73 @@ function shootFromOpponent(
             opponent
         );
 
-    const targetX =
-        state.rink.centerX +
-        Phaser.Math.Between(
-            -11,
-            11
+    const goalie =
+        state.teamGoalie;
+
+    /*
+     * Aim inside the posts and toward the side with more open net.
+     * The goal mouth runs from center +/- 20, while the puck itself
+     * needs extra clearance, so targets stay around +/- 10.
+     */
+    const goalieOffset =
+        goalie
+            ? goalie.x -
+                state.rink.centerX
+            : 0;
+
+    let targetOffset;
+
+    if (
+        goalieOffset > 3
+    ) {
+        targetOffset =
+            Phaser.Math.Between(
+                -11,
+                -7
+            );
+    } else if (
+        goalieOffset < -3
+    ) {
+        targetOffset =
+            Phaser.Math.Between(
+                7,
+                11
+            );
+    } else {
+        targetOffset =
+            Math.random() < 0.5
+                ? Phaser.Math.Between(
+                    -11,
+                    -7
+                )
+                : Phaser.Math.Between(
+                    7,
+                    11
+                );
+    }
+
+    /*
+     * Add modest accuracy error, but clamp it safely away from posts.
+     */
+    targetOffset +=
+        Phaser.Math.FloatBetween(
+            -2.2,
+            2.2
         );
 
+    targetOffset =
+        Phaser.Math.Clamp(
+            targetOffset,
+            -12,
+            12
+        );
+
+    const targetX =
+        state.rink.centerX +
+        targetOffset;
+
     const targetY =
-        state.rink.bottom + 10;
+        state.rink.bottom - 34;
 
     let directionX =
         targetX -
@@ -3674,7 +3760,7 @@ function shootFromOpponent(
 
     const speed =
         Phaser.Math.Between(
-            320,
+            330,
             430
         );
 
@@ -3683,6 +3769,8 @@ function shootFromOpponent(
 
     state.puckVelocityY =
         directionY * speed;
+
+    opponent.possessionTime = 0;
 }
 
 function passFromOpponent(
@@ -3803,11 +3891,20 @@ function updatePuckBattles(
         !owner ||
         battle.cooldown > 0
     ) {
+        battle.pressureOwner = null;
+        battle.pressureChallenger = null;
+        battle.pressureTime = 0;
+
         return;
     }
 
     const ownerIsOpponent =
         owner.isOpponent === true;
+
+    const ownerBody =
+        owner === state.player
+            ? state.player
+            : owner.body;
 
     const challengers =
         ownerIsOpponent
@@ -3815,6 +3912,8 @@ function updatePuckBattles(
                 {
                     body: state.player,
                     isPlayer: true,
+                    facingX: state.facingX,
+                    facingY: state.facingY,
                     velocityX:
                         state.playerVelocityX,
                     velocityY:
@@ -3824,48 +3923,65 @@ function updatePuckBattles(
             ]
             : state.opponents;
 
-    const ownerBody =
-        owner === state.player
-            ? state.player
-            : owner.body;
+    let bestChallenger = null;
+    let bestPressure =
+        -Infinity;
 
     for (
         const challenger
         of challengers
     ) {
         const challengerBody =
-            challenger.isPlayer
-                ? challenger.body
-                : challenger.body;
+            challenger.body;
+
+        const deltaX =
+            ownerBody.x -
+            challengerBody.x;
+
+        const deltaY =
+            ownerBody.y -
+            challengerBody.y;
 
         const distance =
-            Phaser.Math.Distance.Between(
-                ownerBody.x,
-                ownerBody.y,
-                challengerBody.x,
-                challengerBody.y
+            Math.sqrt(
+                deltaX * deltaX +
+                deltaY * deltaY
             );
 
         if (
-            distance > 27
+            distance > 28 ||
+            distance < 0.001
         ) {
             continue;
         }
 
-        const ownerSpeed =
-            owner === state.player
-                ? Math.sqrt(
-                    state.playerVelocityX *
-                        state.playerVelocityX +
-                    state.playerVelocityY *
-                        state.playerVelocityY
-                )
-                : Math.sqrt(
-                    owner.velocityX *
-                        owner.velocityX +
-                    owner.velocityY *
-                        owner.velocityY
-                );
+        const directionX =
+            deltaX / distance;
+
+        const directionY =
+            deltaY / distance;
+
+        const challengerFacingX =
+            challenger.isPlayer
+                ? state.facingX
+                : challenger.facingX;
+
+        const challengerFacingY =
+            challenger.isPlayer
+                ? state.facingY
+                : challenger.facingY;
+
+        const facingDot =
+            challengerFacingX *
+                directionX +
+            challengerFacingY *
+                directionY;
+
+        if (
+            facingDot < 0.15
+        ) {
+            continue;
+        }
 
         const challengerSpeed =
             challenger.isPlayer
@@ -3882,60 +3998,105 @@ function updatePuckBattles(
                         challenger.velocityY
                 );
 
-        let knockChance =
-            0.24 +
+        const pressureScore =
+            (
+                28 -
+                distance
+            ) *
+            0.055 +
+            facingDot *
+            0.9 +
             Phaser.Math.Clamp(
-                (
-                    challengerSpeed -
-                    ownerSpeed
-                ) / 250,
-                -0.08,
-                0.18
+                challengerSpeed / 210,
+                0,
+                0.5
             );
 
         if (
-            distance < 18
+            pressureScore >
+            bestPressure
         ) {
-            knockChance += 0.12;
-        }
+            bestPressure =
+                pressureScore;
 
-        if (
-            Math.random() <
-            Phaser.Math.Clamp(
-                knockChance,
-                0.14,
-                0.58
-            )
-        ) {
-            knockPuckLoose(
-                scene,
-                ownerBody,
-                challengerBody
-            );
-
-            battle.cooldown = 0.7;
-            battle.looseTimer = 0.35;
-            battle.lastContact =
+            bestChallenger =
                 challenger;
-
-            if (
-                challenger.isPlayer
-            ) {
-                state.playerStats.hits =
-                    (
-                        state.playerStats.hits ||
-                        0
-                    ) + 1;
-
-                updatePlayerStatsDisplay(
-                    scene
-                );
-            }
-
-            return;
         }
+    }
 
-        battle.cooldown = 0.22;
+    if (
+        !bestChallenger
+    ) {
+        battle.pressureOwner = null;
+        battle.pressureChallenger = null;
+
+        battle.pressureTime =
+            Math.max(
+                0,
+                battle.pressureTime -
+                    deltaSeconds *
+                    2.4
+            );
+
+        return;
+    }
+
+    if (
+        battle.pressureOwner !== owner ||
+        battle.pressureChallenger !==
+            bestChallenger
+    ) {
+        battle.pressureOwner = owner;
+        battle.pressureChallenger =
+            bestChallenger;
+        battle.pressureTime = 0;
+    }
+
+    battle.pressureTime +=
+        deltaSeconds *
+        Phaser.Math.Clamp(
+            bestPressure,
+            0.55,
+            1.7
+        );
+
+    if (
+        battle.pressureTime <
+        battle.pressureNeeded
+    ) {
+        return;
+    }
+
+    const challengerBody =
+        bestChallenger.body;
+
+    knockPuckLoose(
+        scene,
+        ownerBody,
+        challengerBody
+    );
+
+    battle.cooldown = 0.58;
+    battle.looseTimer = 0.32;
+    battle.lastContact =
+        bestChallenger;
+
+    battle.pressureOwner = null;
+    battle.pressureChallenger = null;
+    battle.pressureTime = 0;
+
+    if (
+        bestChallenger.isPlayer
+    ) {
+        state.playerStats.hits =
+            (
+                state.playerStats.hits ||
+                0
+            ) + 1;
+
+        updatePlayerStatsDisplay(
+            scene
+        );
     }
 }
 
@@ -4952,7 +5113,7 @@ function createTeamGoalie(scene) {
             goalie.y,
             goalie.visualWidth,
             goalie.visualHeight,
-            0x1769d2,
+            0x18a9d8,
             1
         )
             .setStrokeStyle(
@@ -4960,12 +5121,12 @@ function createTeamGoalie(scene) {
                 0xffffff,
                 1
             )
-            .setDepth(26);
+            .setDepth(60);
 
     goalie.mask =
         scene.add.rectangle(
             goalie.x,
-            goalie.y + 6,
+            goalie.y + 7,
             9,
             6,
             0xd8e5ef,
@@ -4976,7 +5137,7 @@ function createTeamGoalie(scene) {
                 0x17375e,
                 1
             )
-            .setDepth(27);
+            .setDepth(61);
 
     goalie.pads =
         scene.add.rectangle(
@@ -4992,14 +5153,14 @@ function createTeamGoalie(scene) {
                 0x17375e,
                 1
             )
-            .setDepth(27);
+            .setDepth(61);
 
     goalie.glove =
         scene.add.circle(
             goalie.x + 11,
             goalie.y,
             4,
-            0x1769d2,
+            0x18a9d8,
             1
         )
             .setStrokeStyle(
@@ -5007,7 +5168,7 @@ function createTeamGoalie(scene) {
                 0xffffff,
                 1
             )
-            .setDepth(27);
+            .setDepth(61);
 
     goalie.blocker =
         scene.add.rectangle(
@@ -5015,7 +5176,7 @@ function createTeamGoalie(scene) {
             goalie.y,
             6,
             7,
-            0x1769d2,
+            0x18a9d8,
             1
         )
             .setStrokeStyle(
@@ -5023,16 +5184,16 @@ function createTeamGoalie(scene) {
                 0xffffff,
                 1
             )
-            .setDepth(27);
+            .setDepth(61);
 
     goalie.stick =
         scene.add.graphics()
-            .setDepth(27);
+            .setDepth(61);
 
     goalie.label =
         scene.add.text(
             goalie.x,
-            goalie.y + 22,
+            goalie.y + 24,
             "G",
             {
                 fontFamily:
@@ -5059,7 +5220,7 @@ function createTeamGoalie(scene) {
             }
         )
             .setOrigin(0.5)
-            .setDepth(28);
+            .setDepth(62);
 
     goalie.saveFlash =
         scene.add.text(
@@ -5268,12 +5429,12 @@ function updateTeamGoalieVisuals(scene) {
 
     goalie.mask.setPosition(
         goalie.x,
-        goalie.y + 7
+        goalie.y - 6
     );
 
     goalie.pads.setPosition(
         goalie.x,
-        goalie.y - 8
+        goalie.y + 8
     );
 
     goalie.glove.setPosition(
@@ -5288,7 +5449,7 @@ function updateTeamGoalieVisuals(scene) {
 
     goalie.label.setPosition(
         goalie.x,
-        goalie.y + 22
+        goalie.y + 24
     );
 
     goalie.saveFlash.setPosition(
@@ -6043,18 +6204,7 @@ function useContextualActionButton(scene) {
 
     if (
         owner &&
-        owner.isOpponent
-    ) {
-        attemptPlayerDefensiveAction(
-            scene
-        );
-
-        return;
-    }
-
-    if (
-        owner &&
-        owner !== state.player
+        !owner.isOpponent
     ) {
         requestPassFromTeammate(
             scene
@@ -6063,9 +6213,14 @@ function useContextualActionButton(scene) {
         return;
     }
 
-    attemptPlayerPokeCheck(
-        scene
+    flashActionButton(
+        scene,
+        "NO PUCK",
+        0x596a7b
     );
+
+    state.actionButton.cooldown =
+        0.28;
 }
 
 function attemptPlayerDefensiveAction(
@@ -6095,7 +6250,7 @@ function attemptPlayerDefensiveAction(
     if (
         distance > 38
     ) {
-        flashActionButton(
+        flashDefenseButton(
             scene,
             "TOO FAR",
             0x8f2020
@@ -6189,7 +6344,7 @@ function attemptPlayerDefensiveAction(
             scene
         );
 
-        flashActionButton(
+        flashDefenseButton(
             scene,
             "CHECK!",
             0x35a85d
@@ -6207,7 +6362,7 @@ function attemptPlayerDefensiveAction(
     carrier.velocityY *=
         0.72;
 
-    flashActionButton(
+    flashDefenseButton(
         scene,
         "MISSED",
         0x8f6b20
@@ -6234,7 +6389,7 @@ function attemptPlayerPokeCheck(
     if (
         distance > 44
     ) {
-        flashActionButton(
+        flashDefenseButton(
             scene,
             "NO TARGET",
             0x8f2020
@@ -6275,7 +6430,7 @@ function attemptPlayerPokeCheck(
     if (
         facingDot < -0.1
     ) {
-        flashActionButton(
+        flashDefenseButton(
             scene,
             "TURN FIRST",
             0x8f6b20
@@ -6299,7 +6454,7 @@ function attemptPlayerPokeCheck(
             0.08
         );
 
-    flashActionButton(
+    flashDefenseButton(
         scene,
         "POKE!",
         0x35a85d
@@ -6750,24 +6905,7 @@ function updateContextualActionButton(
 
     if (
         owner &&
-        owner.isOpponent
-    ) {
-        actionButton.button
-            .setFillStyle(
-                0xc05b22,
-                0.98
-            );
-
-        actionButton.label
-            .setText("CHECK")
-            .setAlpha(1);
-
-        return;
-    }
-
-    if (
-        owner &&
-        owner !== state.player
+        !owner.isOpponent
     ) {
         actionButton.button
             .setFillStyle(
@@ -6784,13 +6922,13 @@ function updateContextualActionButton(
 
     actionButton.button
         .setFillStyle(
-            0x35a85d,
-            0.9
+            0x596a7b,
+            0.7
         );
 
     actionButton.label
-        .setText("POKE")
-        .setAlpha(1);
+        .setText("NO PUCK")
+        .setAlpha(0.72);
 }
 
 function flashActionButton(
@@ -7934,6 +8072,12 @@ function createMobileControls(scene) {
         controlsY - 78
     );
 
+    createDefenseButton(
+        scene,
+        rink.centerX,
+        controlsY - 78
+    );
+
     createSprintButton(
         scene,
         rink.right - 58,
@@ -8141,6 +8285,310 @@ function createAimJoystick(
             );
         }
     );
+}
+
+
+function createDefenseButton(
+    scene,
+    x,
+    y
+) {
+    const state =
+        scene.gameState;
+
+    const defenseButton =
+        state.defenseButton;
+
+    defenseButton.button =
+        scene.add.rectangle(
+            x,
+            y,
+            76,
+            36,
+            0x596a7b,
+            0.82
+        )
+            .setStrokeStyle(
+                2,
+                0xffffff,
+                0.95
+            )
+            .setDepth(110)
+            .setInteractive({
+                useHandCursor: true
+            });
+
+    defenseButton.label =
+        scene.add.text(
+            x,
+            y,
+            "DEFEND",
+            {
+                fontFamily:
+                    "Arial, sans-serif",
+
+                fontSize:
+                    "10px",
+
+                fontStyle:
+                    "bold",
+
+                color:
+                    "#ffffff",
+
+                align:
+                    "center"
+            }
+        )
+            .setOrigin(0.5)
+            .setDepth(111)
+            .setInteractive({
+                useHandCursor: true
+            });
+
+    const useDefense = (
+        pointer,
+        localX,
+        localY,
+        event
+    ) => {
+        useDefenseButton(
+            scene
+        );
+
+        if (
+            event &&
+            event.stopPropagation
+        ) {
+            event.stopPropagation();
+        }
+    };
+
+    defenseButton.button.on(
+        "pointerdown",
+        useDefense
+    );
+
+    defenseButton.label.on(
+        "pointerdown",
+        useDefense
+    );
+}
+
+function useDefenseButton(
+    scene
+) {
+    const state =
+        scene.gameState;
+
+    if (
+        state.playStopped ||
+        state.goalPresentation.active ||
+        state.defenseButton.cooldown > 0
+    ) {
+        return;
+    }
+
+    const owner =
+        state.possession.owner;
+
+    if (
+        owner &&
+        owner.isOpponent
+    ) {
+        attemptPlayerDefensiveAction(
+            scene
+        );
+
+        state.defenseButton.cooldown =
+            state.defenseButton
+                .cooldownLength;
+
+        return;
+    }
+
+    if (
+        !owner
+    ) {
+        attemptPlayerPokeCheck(
+            scene
+        );
+
+        state.defenseButton.cooldown =
+            state.defenseButton
+                .cooldownLength;
+
+        return;
+    }
+
+    flashDefenseButton(
+        scene,
+        "OFFENSE",
+        0x596a7b
+    );
+
+    state.defenseButton.cooldown =
+        0.28;
+}
+
+function updateDefenseButtonState(
+    scene,
+    deltaSeconds
+) {
+    const defenseButton =
+        scene.gameState
+            .defenseButton;
+
+    defenseButton.cooldown =
+        Math.max(
+            0,
+            defenseButton.cooldown -
+                deltaSeconds
+        );
+}
+
+function updateDefenseButtonAppearance(
+    scene
+) {
+    const state =
+        scene.gameState;
+
+    const defenseButton =
+        state.defenseButton;
+
+    if (
+        !defenseButton.button ||
+        !defenseButton.label
+    ) {
+        return;
+    }
+
+    if (
+        state.playStopped ||
+        state.goalPresentation.active
+    ) {
+        defenseButton.button
+            .setFillStyle(
+                0x596a7b,
+                0.62
+            );
+
+        defenseButton.label
+            .setText("WAIT")
+            .setAlpha(0.7);
+
+        return;
+    }
+
+    if (
+        defenseButton.cooldown > 0
+    ) {
+        defenseButton.button
+            .setFillStyle(
+                0x596a7b,
+                0.78
+            );
+
+        defenseButton.label
+            .setText("WAIT")
+            .setAlpha(0.8);
+
+        return;
+    }
+
+    const owner =
+        state.possession.owner;
+
+    if (
+        owner &&
+        owner.isOpponent
+    ) {
+        defenseButton.button
+            .setFillStyle(
+                0xc05b22,
+                0.98
+            );
+
+        defenseButton.label
+            .setText("CHECK")
+            .setAlpha(1);
+
+        return;
+    }
+
+    if (
+        !owner
+    ) {
+        defenseButton.button
+            .setFillStyle(
+                0x35a85d,
+                0.96
+            );
+
+        defenseButton.label
+            .setText("POKE")
+            .setAlpha(1);
+
+        return;
+    }
+
+    defenseButton.button
+        .setFillStyle(
+            0x596a7b,
+            0.7
+        );
+
+    defenseButton.label
+        .setText("DEFEND")
+        .setAlpha(0.72);
+}
+
+function flashDefenseButton(
+    scene,
+    label,
+    color
+) {
+    const defenseButton =
+        scene.gameState
+            .defenseButton;
+
+    if (
+        !defenseButton.button ||
+        !defenseButton.label
+    ) {
+        return;
+    }
+
+    if (
+        defenseButton.flashTimer
+    ) {
+        defenseButton.flashTimer.remove(
+            false
+        );
+    }
+
+    defenseButton.button
+        .setFillStyle(
+            color,
+            1
+        );
+
+    defenseButton.label
+        .setText(label)
+        .setAlpha(1);
+
+    defenseButton.flashTimer =
+        scene.time.delayedCall(
+            380,
+            () => {
+                defenseButton.flashTimer =
+                    null;
+
+                updateDefenseButtonAppearance(
+                    scene
+                );
+            }
+        );
 }
 
 function createSprintButton(
@@ -9741,6 +10189,10 @@ function finishGoalRestart(scene) {
     updateContextualActionButton(
         scene
     );
+
+    updateDefenseButtonAppearance(
+        scene
+    );
 }
 
 function freezeGameplayDuringGoal(scene) {
@@ -9818,6 +10270,7 @@ function resetPlayersForCenterFaceoff(
     state.playerStats.lastPasser = null;
 
     state.actionButton.cooldown = 0;
+    state.defenseButton.cooldown = 0;
 
     state.playerVelocityX = 0;
     state.playerVelocityY = 0;

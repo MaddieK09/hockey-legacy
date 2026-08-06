@@ -3,7 +3,7 @@
 
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.0.94
+   VERSION 0.0.95
 
    CONTROLS
    - Left joystick: skate
@@ -198,7 +198,16 @@ function create() {
             pressureOwner: null,
             pressureChallenger: null,
             pressureTime: 0,
-            pressureNeeded: 0.34
+            pressureNeeded: 0.30
+        },
+
+        animationClock: 0,
+
+        defenseAssist: {
+            range: 52,
+            autoFaceStrength: 0.32,
+            checkLunge: 26,
+            pokeRange: 54
         },
 
         goalie: {
@@ -576,7 +585,7 @@ function createMainMenu(scene) {
         scene.add.text(
             rink.centerX,
             versionY,
-            "Version 0.0.94",
+            "Version 0.0.95",
             {
                 fontFamily:
                     "Arial, sans-serif",
@@ -897,6 +906,9 @@ function update(
             delta / 1000,
             0.05
         );
+
+    state.animationClock +=
+        deltaSeconds;
 
     updateActionButtonState(
         this,
@@ -2325,6 +2337,157 @@ function updateSkaterBodyRotation(
         Math.PI / 2;
 }
 
+function updateSkaterAnimation(
+    body,
+    velocityX,
+    velocityY,
+    animationClock,
+    sprinting = false
+) {
+    if (
+        !body
+    ) {
+        return;
+    }
+
+    const speed =
+        Math.sqrt(
+            velocityX * velocityX +
+            velocityY * velocityY
+        );
+
+    const moving =
+        speed > 8;
+
+    if (
+        !moving
+    ) {
+        body.setScale(1);
+        body.setY(
+            Math.round(body.y)
+        );
+
+        return;
+    }
+
+    const strideSpeed =
+        sprinting
+            ? 13
+            : 8.5;
+
+    const stride =
+        Math.sin(
+            animationClock *
+            strideSpeed
+        );
+
+    const bob =
+        Math.abs(stride) *
+        (
+            sprinting
+                ? 1.6
+                : 0.9
+        );
+
+    const stretch =
+        sprinting
+            ? 1.035
+            : 1.018;
+
+    body.setScale(
+        1 / stretch,
+        stretch
+    );
+
+    body.y +=
+        bob * 0.18;
+}
+
+function playCheckAnimation(
+    scene,
+    body,
+    facingX,
+    facingY
+) {
+    if (
+        !body
+    ) {
+        return;
+    }
+
+    scene.tweens.killTweensOf(
+        body
+    );
+
+    const startX =
+        body.x;
+
+    const startY =
+        body.y;
+
+    scene.tweens.add({
+        targets:
+            body,
+
+        x:
+            startX +
+            facingX * 12,
+
+        y:
+            startY +
+            facingY * 12,
+
+        scaleX:
+            1.08,
+
+        scaleY:
+            0.94,
+
+        duration:
+            90,
+
+        yoyo:
+            true,
+
+        ease:
+            "Quad.Out"
+    });
+}
+
+function playPokeAnimation(
+    scene,
+    stick
+) {
+    if (
+        !stick
+    ) {
+        return;
+    }
+
+    scene.tweens.killTweensOf(
+        stick
+    );
+
+    stick.setAlpha(1);
+
+    scene.tweens.add({
+        targets:
+            stick,
+
+        alpha:
+            0.45,
+
+        duration:
+            70,
+
+        yoyo:
+            true,
+
+        repeat:
+            1
+    });
+}
+
 /* =========================================================
    PLAYER
 ========================================================= */
@@ -2390,6 +2553,14 @@ function createPlayer(scene) {
         state.player,
         state.facingX,
         state.facingY
+    );
+
+    updateSkaterAnimation(
+        state.player,
+        state.playerVelocityX,
+        state.playerVelocityY,
+        state.animationClock,
+        state.sprinting
     );
 }
 
@@ -2591,6 +2762,24 @@ function updateTeammateVisuals(
         teammate.facingY
     );
 
+    updateSkaterAnimation(
+        teammate.body,
+        teammate.velocityX,
+        teammate.velocityY,
+        (
+            teammate.body.scene &&
+            teammate.body.scene.gameState
+                ? teammate.body.scene.gameState.animationClock
+                : 0
+        ) +
+        (
+            teammate.side === "left"
+                ? 0
+                : 0.35
+        ),
+        false
+    );
+
     updateTeammateStick(
         teammate
     );
@@ -2689,6 +2878,19 @@ function chooseTeammateTarget(
 
     if (
         owner &&
+        owner.isOpponent
+    ) {
+        chooseDefensiveTargetForTeammate(
+            state,
+            teammate,
+            owner
+        );
+
+        return;
+    }
+
+    if (
+        owner &&
         owner !== state.player
     ) {
         chooseSupportTargetForTeammate(
@@ -2736,106 +2938,94 @@ function chooseTeammateTarget(
         return;
     }
 
-    const puckInOffensiveHalf =
-        state.puck.y <
-        rink.centerY;
-
-    if (
-        puckInOffensiveHalf
-    ) {
-        const puckOnLeft =
-            state.puck.x <
-            rink.centerX;
-
-        const teammateOnFarSide =
-            (
-                puckOnLeft &&
-                teammate.side === "right"
-            ) ||
-            (
-                !puckOnLeft &&
-                teammate.side === "left"
-            );
-
-        teammate.targetX =
-            rink.centerX +
-            (
-                teammate.side === "left"
-                    ? -58
-                    : 58
-            );
-
-        teammate.targetY =
-            teammateOnFarSide
-                ? state.offensiveGoal.y + 92
-                : Phaser.Math.Clamp(
-                    state.puck.y + 62,
-                    state.offensiveGoal.y + 120,
-                    rink.centerY - 12
-                );
-
-        return;
-    }
-
-    const playerNearPuck =
-        Phaser.Math.Distance.Between(
-            state.player.x,
-            state.player.y,
-            state.puck.x,
-            state.puck.y
-        ) <= 112;
-
-    if (
-        playerNearPuck
-    ) {
-        teammate.targetX =
-            rink.centerX +
-            teammate.laneOffsetX;
-
-        teammate.targetY =
-            Phaser.Math.Clamp(
-                state.puck.y - 78,
-                rink.centerY - 28,
-                rink.bottom - 125
-            );
-
-        return;
-    }
-
-    const puckOnLeft =
-        state.puck.x <
-        rink.centerX;
-
-    const teammateOnPuckSide =
-        (
-            puckOnLeft &&
-            teammate.side === "left"
-        ) ||
-        (
-            !puckOnLeft &&
-            teammate.side === "right"
-        );
-
+    /*
+     * On a loose puck, the non-chasing winger protects the middle
+     * instead of flying up ice looking for offense.
+     */
     teammate.targetX =
         rink.centerX +
         (
             teammate.side === "left"
-                ? -64
-                : 64
+                ? -48
+                : 48
         );
 
     teammate.targetY =
+        Phaser.Math.Clamp(
+            state.puck.y + 72,
+            rink.centerY + 10,
+            rink.bottom - 110
+        );
+}
+
+function chooseDefensiveTargetForTeammate(
+    state,
+    teammate,
+    opponentCarrier
+) {
+    const rink =
+        state.rink;
+
+    const carrierOnLeft =
+        opponentCarrier.body.x <
+        rink.centerX;
+
+    const teammateOnPuckSide =
+        (
+            carrierOnLeft &&
+            teammate.side === "left"
+        ) ||
+        (
+            !carrierOnLeft &&
+            teammate.side === "right"
+        );
+
+    if (
         teammateOnPuckSide
-            ? Phaser.Math.Clamp(
-                state.puck.y + 52,
-                rink.centerY + 10,
-                rink.bottom - 105
-            )
-            : Phaser.Math.Clamp(
-                state.puck.y - 92,
-                rink.centerY - 40,
-                rink.bottom - 145
+    ) {
+        /*
+         * Strong-side winger pressures from the inside shoulder.
+         */
+        teammate.targetX =
+            Phaser.Math.Clamp(
+                opponentCarrier.body.x +
+                (
+                    carrierOnLeft
+                        ? 14
+                        : -14
+                ),
+                rink.left + 34,
+                rink.right - 34
             );
+
+        teammate.targetY =
+            Phaser.Math.Clamp(
+                opponentCarrier.body.y + 18,
+                rink.centerY - 25,
+                rink.bottom - 82
+            );
+
+        return;
+    }
+
+    /*
+     * Weak-side winger collapses into the slot and takes away
+     * the cross-ice passing lane.
+     */
+    teammate.targetX =
+        rink.centerX +
+        (
+            teammate.side === "left"
+                ? -30
+                : 30
+        );
+
+    teammate.targetY =
+        Phaser.Math.Clamp(
+            opponentCarrier.body.y + 58,
+            rink.centerY + 8,
+            rink.bottom - 92
+        );
 }
 
 function chooseSupportTargetForPlayer(
@@ -6607,16 +6797,17 @@ function attemptPlayerDefensiveAction(
         );
 
     if (
-        distance > 38
+        distance >
+        state.defenseAssist.range
     ) {
         flashDefenseButton(
             scene,
-            "TOO FAR",
+            "GET CLOSER",
             0x8f2020
         );
 
-        state.actionButton.cooldown =
-            0.3;
+        state.defenseButton.cooldown =
+            0.24;
 
         return;
     }
@@ -6641,6 +6832,58 @@ function attemptPlayerDefensiveAction(
     directionY /=
         directionLength;
 
+    /*
+     * Defensive assist gently turns the player toward the puck carrier.
+     */
+    const currentFacingX =
+        state.facingX;
+
+    const currentFacingY =
+        state.facingY;
+
+    let assistedX =
+        Phaser.Math.Linear(
+            currentFacingX,
+            directionX,
+            state.defenseAssist
+                .autoFaceStrength
+        );
+
+    let assistedY =
+        Phaser.Math.Linear(
+            currentFacingY,
+            directionY,
+            state.defenseAssist
+                .autoFaceStrength
+        );
+
+    const assistedLength =
+        Math.sqrt(
+            assistedX * assistedX +
+            assistedY * assistedY
+        ) || 1;
+
+    assistedX /=
+        assistedLength;
+
+    assistedY /=
+        assistedLength;
+
+    state.facingX =
+        assistedX;
+
+    state.facingY =
+        assistedY;
+
+    state.facingAngle =
+        Math.atan2(
+            assistedY,
+            assistedX
+        );
+
+    state.targetFacingAngle =
+        state.facingAngle;
+
     const facingDot =
         state.facingX *
             directionX +
@@ -6648,18 +6891,18 @@ function attemptPlayerDefensiveAction(
             directionY;
 
     let successChance =
-        0.34;
+        0.46;
 
     if (
-        distance < 27
+        distance < 34
     ) {
         successChance += 0.16;
     }
 
     if (
-        facingDot > 0.45
+        facingDot > 0.35
     ) {
-        successChance += 0.17;
+        successChance += 0.13;
     }
 
     const playerSpeed =
@@ -6671,7 +6914,7 @@ function attemptPlayerDefensiveAction(
         );
 
     if (
-        playerSpeed > 110
+        playerSpeed > 105
     ) {
         successChance += 0.08;
     }
@@ -6679,9 +6922,29 @@ function attemptPlayerDefensiveAction(
     successChance =
         Phaser.Math.Clamp(
             successChance,
-            0.22,
-            0.72
+            0.35,
+            0.78
         );
+
+    /*
+     * Small lunge makes the control feel responsive without teleporting.
+     */
+    state.playerVelocityX +=
+        directionX *
+        state.defenseAssist
+            .checkLunge;
+
+    state.playerVelocityY +=
+        directionY *
+        state.defenseAssist
+            .checkLunge;
+
+    playCheckAnimation(
+        scene,
+        state.player,
+        directionX,
+        directionY
+    );
 
     if (
         Math.random() <
@@ -6709,26 +6972,26 @@ function attemptPlayerDefensiveAction(
             0x35a85d
         );
 
-        state.actionButton.cooldown =
-            0.72;
+        state.defenseButton.cooldown =
+            0.54;
 
         return;
     }
 
     carrier.velocityX *=
-        0.72;
+        0.68;
 
     carrier.velocityY *=
-        0.72;
+        0.68;
 
     flashDefenseButton(
         scene,
-        "MISSED",
+        "BUMP",
         0x8f6b20
     );
 
-    state.actionButton.cooldown =
-        0.55;
+    state.defenseButton.cooldown =
+        0.42;
 }
 
 function attemptPlayerPokeCheck(
@@ -6746,16 +7009,17 @@ function attemptPlayerPokeCheck(
         );
 
     if (
-        distance > 44
+        distance >
+        state.defenseAssist.pokeRange
     ) {
         flashDefenseButton(
             scene,
-            "NO TARGET",
+            "GET CLOSER",
             0x8f2020
         );
 
-        state.actionButton.cooldown =
-            0.28;
+        state.defenseButton.cooldown =
+            0.2;
 
         return;
     }
@@ -6780,38 +7044,37 @@ function attemptPlayerPokeCheck(
     directionY /=
         length;
 
-    const facingDot =
-        state.facingX *
-            directionX +
-        state.facingY *
-            directionY;
+    state.facingX =
+        directionX;
 
-    if (
-        facingDot < -0.1
-    ) {
-        flashDefenseButton(
-            scene,
-            "TURN FIRST",
-            0x8f6b20
+    state.facingY =
+        directionY;
+
+    state.facingAngle =
+        Math.atan2(
+            directionY,
+            directionX
         );
 
-        state.actionButton.cooldown =
-            0.28;
-
-        return;
-    }
+    state.targetFacingAngle =
+        state.facingAngle;
 
     state.puckVelocityX +=
-        state.facingX * 115;
+        directionX * 145;
 
     state.puckVelocityY +=
-        state.facingY * 115;
+        directionY * 145;
 
     state.possession.pickupCooldown =
         Math.min(
             state.possession.pickupCooldown,
-            0.08
+            0.06
         );
+
+    playPokeAnimation(
+        scene,
+        state.playerStick
+    );
 
     flashDefenseButton(
         scene,
@@ -6819,8 +7082,8 @@ function attemptPlayerPokeCheck(
         0x35a85d
     );
 
-    state.actionButton.cooldown =
-        0.42;
+    state.defenseButton.cooldown =
+        0.34;
 }
 
 function requestPlayerPass(scene) {
@@ -8668,8 +8931,8 @@ function createDefenseButton(
         scene.add.rectangle(
             x,
             y,
-            76,
-            36,
+            92,
+            42,
             0x596a7b,
             0.82
         )

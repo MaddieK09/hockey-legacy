@@ -3,7 +3,7 @@
 
     /* =========================================================
        HOCKEY LEGACY
-       VERSION 0.1.15
+       VERSION 0.1.16
 
        CONTROLS
        - Left joystick: skate
@@ -10978,8 +10978,11 @@
                 aim.centerY
             );
 
-            state.targetFacingAngle =
-                -Math.PI / 2;
+            /*
+             * Aiming must not rotate the skater's whole body. The right stick
+             * controls shot direction only; skating/facing stays independent.
+             * Later stick/arm animations can visually follow this aim angle.
+             */
 
             return;
         }
@@ -11056,11 +11059,11 @@
             knobY
         );
 
-        state.targetFacingAngle =
-            Math.atan2(
-                shotDirectionY,
-                shotDirectionX
-            );
+        /*
+         * Do NOT copy the shot angle into targetFacingAngle here.
+         * That used to make the entire player rotate while aiming, which felt
+         * clunky and unlike hockey. Shot direction remains stored in aim.
+         */
     }
 
     function finishAimPointer(

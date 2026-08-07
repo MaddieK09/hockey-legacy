@@ -10002,29 +10002,37 @@
          * Shift the buttons slightly inward so they stay comfortably
          * inside the rink on narrow iPhone screens.
          */
-        const rightActionX =
-            rink.right - 122;
-
         /*
-         * Compact action stack beside the shooting stick.
-         * Keep the buttons low so they do not cover active play.
+         * v427 RIGHT-THUMB LAYOUT
+         *
+         * Keep the shooting stick completely clear.
+         * The three action buttons sit above and slightly inward from it,
+         * close enough for the right thumb without covering the stick.
          */
+        const rightActionX =
+            rink.right - 132;
+
+        const actionStackBottom =
+            controlsY - 58;
+
+        const actionGap = 36;
+
         createContextualActionButton(
             scene,
             rightActionX,
-            controlsY + 28
+            actionStackBottom
         );
 
         createSprintButton(
             scene,
             rightActionX,
-            controlsY - 10
+            actionStackBottom - actionGap
         );
 
         createDefenseButton(
             scene,
             rightActionX,
-            controlsY - 48
+            actionStackBottom - actionGap * 2
         );
     }
 

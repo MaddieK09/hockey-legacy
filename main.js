@@ -10003,24 +10003,28 @@
          * inside the rink on narrow iPhone screens.
          */
         const rightActionX =
-            rink.right - 58;
+            rink.right - 122;
 
+        /*
+         * Compact action stack beside the shooting stick.
+         * Keep the buttons low so they do not cover active play.
+         */
         createContextualActionButton(
             scene,
             rightActionX,
-            controlsY - 74
+            controlsY + 28
         );
 
         createSprintButton(
             scene,
             rightActionX,
-            controlsY - 110
+            controlsY - 10
         );
 
         createDefenseButton(
             scene,
             rightActionX,
-            controlsY - 146
+            controlsY - 48
         );
     }
 

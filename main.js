@@ -3,7 +3,7 @@
 
 /* =========================================================
    HOCKEY LEGACY
-   VERSION 0.1.12
+   VERSION 0.1.13
 
    CONTROLS
    - Left joystick: skate
@@ -9989,26 +9989,27 @@ function createMobileControls(scene) {
         controlsY
     );
 
-    createDefenseButton(
-        scene,
-        rink.left + 64,
-        controlsY - 72
-    );
-
-    createSprintButton(
-        scene,
-        rink.centerX,
-        controlsY - 72
-    );
-
     /*
-     * PASS / CALL PASS belongs beside the shooting controls so the player's
-     * right thumb handles all puck actions without crossing the screen.
+     * Keep every action control on the shooting-stick side.
+     * Left thumb = skating only.
+     * Right thumb = shoot, pass/call pass, sprint, and defense.
      */
     createContextualActionButton(
         scene,
         rink.right - 64,
         controlsY - 72
+    );
+
+    createSprintButton(
+        scene,
+        rink.right - 64,
+        controlsY - 116
+    );
+
+    createDefenseButton(
+        scene,
+        rink.right - 64,
+        controlsY - 160
     );
 }
 

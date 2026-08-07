@@ -3,7 +3,7 @@
 
     /* =========================================================
        HOCKEY LEGACY
-       VERSION 0.1.14
+       VERSION 0.1.15
 
        CONTROLS
        - Left joystick: skate
@@ -7723,8 +7723,8 @@
             scene.add.rectangle(
                 x,
                 y,
-                88,
-                34,
+                76,
+                30,
                 0x2477c9,
                 0.98
             )
@@ -10003,24 +10003,24 @@
          * inside the rink on narrow iPhone screens.
          */
         const rightActionX =
-            rink.right - 78;
+            rink.right - 58;
 
         createContextualActionButton(
             scene,
             rightActionX,
-            controlsY - 78
+            controlsY - 74
         );
 
         createSprintButton(
             scene,
             rightActionX,
-            controlsY - 122
+            controlsY - 110
         );
 
         createDefenseButton(
             scene,
             rightActionX,
-            controlsY - 166
+            controlsY - 146
         );
     }
 
@@ -10263,8 +10263,8 @@
             scene.add.rectangle(
                 x,
                 y,
-                88,
-                34,
+                76,
+                30,
                 0x596a7b,
                 0.82
             )
@@ -10563,8 +10563,8 @@
             scene.add.rectangle(
                 x,
                 y,
-                88,
-                34,
+                76,
+                30,
                 0x1769d2,
                 0.94
             )
